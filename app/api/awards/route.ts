@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
 export const dynamic = "force-dynamic";
+
+function isCoord(session: any) {
+  return session && (session.role === "ADMIN" || session.role === "TEACHER" || session.email === "coordinator@school.local");
+}
+
 export async function GET() {
   const awards = await (prisma as any).award.findMany();
   return NextResponse.json({ awards });
 }
+
 export async function POST(req: Request) {
   const session = await readSession();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isCoord(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const b = await req.json();
   const kind = String(b.kind);
   const db = prisma as any;
