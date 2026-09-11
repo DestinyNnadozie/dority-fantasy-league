@@ -222,11 +222,3 @@ model Award {
   fixtureKey String @default("")
 }
 
-model Award {
-  id         String @id @default(cuid())
-  kind       String
-  label      String
-  playerName String
-  teamName   String @default("")
-  fixtureKey String @default("")
-}
