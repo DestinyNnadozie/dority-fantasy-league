@@ -201,3 +201,14 @@ model AuditLog {
   payload   String
   createdAt DateTime @default(now())
 }
+model LiveMatch {
+  id        String   @id @default(cuid())
+  fixtureKey String  @unique
+  homeTeam  String
+  awayTeam  String
+  kickoff   DateTime
+  status    String   @default("UPCOMING")
+  homeXi    String   @default("[]")
+  awayXi    String   @default("[]")
+  events    String   @default("[]")
+}

@@ -30,7 +30,7 @@ export function NavClient() {
       <a href="/squad" onClick={() => setOpen(false)}>Squad</a>
       <a href="/leaderboard" onClick={() => setOpen(false)}>FPL table</a>
       <a href="/table" onClick={() => setOpen(false)}>Club table</a>
-      <a href="/fixtures" onClick={() => setOpen(false)}>Fixtures</a>
+      <a href="/fixtures" onClick={() => setOpen(false)}>Fixtures</a>`n      <a href="/live" onClick={() => setOpen(false)}>Live score</a>
       <a href="/rankings" onClick={() => setOpen(false)}>Rankings</a>
       <a href="/awards" onClick={() => setOpen(false)}>Awards</a>
       <a href="/leagues" onClick={() => setOpen(false)}>Leagues</a>
