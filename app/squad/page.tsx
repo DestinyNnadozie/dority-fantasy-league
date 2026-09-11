@@ -96,7 +96,9 @@ export default function SquadPage() {
   }, [formation, loaded]);
 
   const rows = FORMATIONS[formation];
-  const bank = (3000 - picks.reduce((s, p) => s + p.price, 0)) / 10;
+  const spent = picks.reduce((s, p) => s + p.price, 0);
+  const bank = (3000 - spent) / 10;
+  const over = bank < 0;
   const starters = picks.filter((p) => p.slot === "STARTING");
   const bench = picks.filter((p) => p.slot === "BENCH");
   const menuPlayer = picks.find((p) => p.id === menuId);
@@ -112,6 +114,11 @@ export default function SquadPage() {
 
   function canAdd(player: P, asBench: boolean) {
     if (picks.some((p) => p.id === player.id)) return false;
+    if (spent + player.price > 3000) {
+      alert("Budget exceeded. You only have " + bank.toFixed(1) + "m left. This player costs " + (player.price / 10).toFixed(1) + "m.");
+      setMsg("Over budget");
+      return false;
+    }
     if (picks.filter((p) => p.teamName === player.teamName).length >= 4) {
       setMsg("Max 4 players from " + player.teamName); return false;
     }
@@ -156,6 +163,7 @@ export default function SquadPage() {
   }
 
   async function save() {
+    if (over) { alert("You are over budget. Remove players before saving."); return; }
     if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters"); return; }
     const res = await fetch("/api/team/picks", {
       method: "PUT",
@@ -164,6 +172,7 @@ export default function SquadPage() {
     });
     const data = await res.json();
     setMsg(res.ok ? "Squad saved" : data.error || "Could not save");
+    if (!res.ok) alert(data.error || "Could not save");
   }
 
   return (
@@ -171,11 +180,17 @@ export default function SquadPage() {
       <section>
         <h1 className="text-3xl font-extrabold text-white">{teamName}</h1>
         <RenameTeam current={teamName} onSaved={setTeamName} />
-        <p className="mb-3 text-xs text-blue-300">Bank {bank.toFixed(1)}m · {starters.length}/9 · Bench {bench.length}/6</p>
-        <select value={formation} onChange={(e) => setFormation(e.target.value)} className="mb-3 rounded bg-black px-2 py-1 text-sm ring-1 ring-blue-500/30">
-          {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
-        </select>
-        {msg && <p className="mb-2 text-sm text-yellow-300">{msg}</p>}
+        <div className={"mt-3 inline-block rounded-2xl border-2 px-5 py-3 " + (over ? "border-red-500 bg-red-950" : "border-blue-400 bg-blue-950")}>
+          <p className="text-xs uppercase tracking-wide text-blue-200">Budget remaining</p>
+          <p className={"text-3xl font-black " + (over ? "text-red-400" : "text-white")}>{bank.toFixed(1)}m</p>
+          <p className="text-xs text-blue-300">300.0m total · {starters.length}/9 start · {bench.length}/6 bench</p>
+        </div>
+        <div className="mt-3">
+          <select value={formation} onChange={(e) => setFormation(e.target.value)} className="rounded bg-black px-2 py-1 text-sm ring-1 ring-blue-500/30">
+            {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
+          </select>
+        </div>
+        {msg && <p className="mb-2 mt-2 text-sm text-yellow-300">{msg}</p>}
 
         {menuPlayer && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setMenuId(null)}>
@@ -189,7 +204,7 @@ export default function SquadPage() {
           </div>
         )}
 
-        <div className="relative min-h-[620px] overflow-hidden rounded-2xl border-4 border-white/80 bg-[#15803d] p-6">
+        <div className="relative mt-4 min-h-[620px] overflow-hidden rounded-2xl border-4 border-white/80 bg-[#15803d] p-6">
           <Markings />
           <div className="relative z-10 flex min-h-[572px] flex-col justify-between py-2">
             {rows.map((row, i) => (
