@@ -3,58 +3,34 @@ import { useEffect, useState } from "react";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const [msg, setMsg] = useState("");
-
-  async function load() {
-    const res = await fetch("/api/admin/users");
-    const data = await res.json();
-    setUsers(data.users || []);
-    if (!res.ok) setMsg(data.error || "Forbidden");
-  }
-  useEffect(() => { load(); }, []);
-
-  async function resetPassword(userId: string, name: string) {
-    const password = prompt("New password for " + name);
-    if (!password) return;
-    const res = await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, password })
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    fetch("/api/admin/users").then(async (r) => {
+      const d = await r.json();
+      if (!r.ok) setErr(d.error || "Could not load users");
+      setUsers(d.users || []);
     });
-    const data = await res.json();
-    setMsg(res.ok ? "Password reset for " + name : data.error || "Failed");
-  }
-
+  }, []);
   return (
     <section className="rounded-2xl border border-blue-500/20 bg-black p-4">
-      <h1 className="mb-3 text-xl font-semibold text-blue-300">Users</h1>
-      {msg && <p className="mb-3 text-sm text-yellow-300">{msg}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead>
-            <tr className="text-blue-400">
-              <th className="py-2">Name</th>
-              <th>Email</th>
-              <th>Team</th>
-              <th>Pts</th>
-              <th></th>
+      <h1 className="mb-1 text-xl font-semibold text-blue-300">Users</h1>
+      <p className="mb-3 text-sm text-blue-400">{users.length} accounts</p>
+      {err && <p className="text-red-400">{err}</p>}
+      <table className="w-full text-left text-sm">
+        <thead className="text-blue-400">
+          <tr><th className="p-2">Name</th><th className="p-2">Email</th><th className="p-2">Team</th><th className="p-2">Pts</th></tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id} className="border-t border-blue-900">
+              <td className="p-2">{u.name}<div className="text-xs text-blue-400">{u.role}</div></td>
+              <td className="p-2">{u.email}</td>
+              <td className="p-2">{u.teamName}</td>
+              <td className="p-2">{u.points}</td>
             </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-t border-blue-900/40">
-                <td className="py-2">{u.name}<div className="text-xs text-blue-400">{u.role}</div></td>
-                <td>{u.email}</td>
-                <td>{u.teamName}</td>
-                <td>{u.points}</td>
-                <td>
-                  <button type="button" onClick={() => resetPassword(u.id, u.name)} className="text-xs text-blue-300">Reset password</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
