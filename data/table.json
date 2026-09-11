@@ -1,0 +1,42 @@
+[
+  {
+    "team": "Marseille",
+    "played": 0,
+    "won": 0,
+    "drawn": 0,
+    "lost": 0,
+    "gf": 0,
+    "ga": 0,
+    "pts": 0
+  },
+  {
+    "team": "PSG",
+    "played": 0,
+    "won": 0,
+    "drawn": 0,
+    "lost": 0,
+    "gf": 0,
+    "ga": 0,
+    "pts": 0
+  },
+  {
+    "team": "Lyon",
+    "played": 0,
+    "won": 0,
+    "drawn": 0,
+    "lost": 0,
+    "gf": 0,
+    "ga": 0,
+    "pts": 0
+  },
+  {
+    "team": "Monaco",
+    "played": 0,
+    "won": 0,
+    "drawn": 0,
+    "lost": 0,
+    "gf": 0,
+    "ga": 0,
+    "pts": 0
+  }
+]

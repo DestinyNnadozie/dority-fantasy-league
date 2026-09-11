@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Position {
+  GK
+  DEF
+  MID
+  FWD
+}
+
+enum LeagueType {
+  CLASSIC
+  H2H
+}
+
+enum PickSlot {
+  STARTING
+  BENCH
+}
+
+enum GameweekStatus {
+  UPCOMING
+  OPEN
+  LOCKED
+  SCORING
+  FINISHED
+}
+
+model User {
+  id                String         @id @default(cuid())
+  email             String         @unique
+  name              String
+  passwordHash      String
+  role              Role           @default(STUDENT)
+  createdAt         DateTime       @default(now())
+  team              Team?
+  leagueMemberships LeagueMember[]
+  adminActions      AuditLog[]
+}
+
+model Team {
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  bank           Int                 @default(1000)
+  freeTransfers  Int                 @default(1)
+  overallPoints  Int                 @default(0)
+  picks          SquadPick[]
+  transfers      Transfer[]
+  gameweekScores TeamGameweekScore[]
+  createdAt      DateTime            @default(now())
+}
+
+model SchoolPlayer {
+  id           String                @id @default(cuid())
+  firstName    String
+  lastName     String
+  position     Position
+  price        Int
+  status       String                @default("available")
+  photoUrl     String?
+  teamName     String?
+  picks        SquadPick[]
+  stats        PlayerGameweekStat[]
+  priceHistory PlayerPriceHistory[]
+}
+
+model PlayerPriceHistory {
+  id         String       @id @default(cuid())
+  playerId   String
+  player     SchoolPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  price      Int
+  recordedAt DateTime     @default(now())
+}
+
+model Gameweek {
+  id       Int                  @id
+  name     String
+  deadline DateTime
+  status   GameweekStatus       @default(UPCOMING)
+  fixtures Fixture[]
+  stats    PlayerGameweekStat[]
+  picks    SquadPick[]
+  scores   TeamGameweekScore[]
+}
+
+model Fixture {
+  id         String    @id @default(cuid())
+  gameweekId Int
+  gameweek   Gameweek  @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  homeTeam   String
+  awayTeam   String
+  kickoff    DateTime
+  homeGoals  Int?
+  awayGoals  Int?
+  finished   Boolean   @default(false)
+}
+
+model PlayerGameweekStat {
+  id            String       @id @default(cuid())
+  playerId      String
+  player        SchoolPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  gameweekId    Int
+  gameweek      Gameweek     @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  minutes       Int          @default(0)
+  goals         Int          @default(0)
+  assists       Int          @default(0)
+  cleanSheet    Boolean      @default(false)
+  yellowCards   Int          @default(0)
+  redCards      Int          @default(0)
+  ownGoals      Int          @default(0)
+  saves         Int          @default(0)
+  penaltySaves  Int          @default(0)
+  penaltyMisses Int          @default(0)
+  bonus         Int          @default(0)
+  rawPoints     Int          @default(0)
+
+  @@unique([playerId, gameweekId])
+}
+
+model SquadPick {
+  id            String       @id @default(cuid())
+  teamId        String
+  team          Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId      String
+  player        SchoolPlayer @relation(fields: [playerId], references: [id])
+  gameweekId    Int
+  gameweek      Gameweek     @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  slot          PickSlot
+  squadOrder    Int
+  isCaptain     Boolean      @default(false)
+  isViceCaptain Boolean      @default(false)
+  purchasePrice Int
+
+  @@unique([teamId, gameweekId, playerId])
+}
+
+model Transfer {
+  id          String   @id @default(cuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  gameweekId  Int
+  playerInId  String
+  playerOutId String
+  cost        Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model TeamGameweekScore {
+  id           String   @id @default(cuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  gameweekId   Int
+  gameweek     Gameweek @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  points       Int
+  transferHits Int      @default(0)
+  finalPoints  Int
+
+  @@unique([teamId, gameweekId])
+}
+
+model League {
+  id        String         @id @default(cuid())
+  name      String
+  type      LeagueType     @default(CLASSIC)
+  code      String         @unique
+  createdBy String
+  members   LeagueMember[]
+}
+
+model LeagueMember {
+  id       String   @id @default(cuid())
+  leagueId String
+  league   League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([leagueId, userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  payload   String
+  createdAt DateTime @default(now())
+}
