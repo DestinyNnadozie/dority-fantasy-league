@@ -34,7 +34,7 @@ export async function PUT(req: Request) {
       isCaptain: boolean; isViceCaptain: boolean;
     }[];
     const unique = incoming.filter((p, i, arr) => arr.findIndex((x) => x.playerId === p.playerId) === i);
-    if (unique.filter((p) => p.slot === "STARTING").length !== 9) {
+    if (unique.filter((p) => p.slot === "BENCH").length !== 6) throw new Error("Need 6 bench players");`n    if (unique.filter((p) => p.slot === "STARTING").length !== 9) {
       throw new Error("Starting lineup must be 9 players");
     }
     const players = await prisma.schoolPlayer.findMany({

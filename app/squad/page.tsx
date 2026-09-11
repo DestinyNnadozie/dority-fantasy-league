@@ -164,7 +164,7 @@ export default function SquadPage() {
 
   async function save() {
     if (over) { alert("You are over budget. Remove players before saving."); return; }
-    if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters"); return; }
+    if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters (1 GK + 8)"); return; }`n    if (picks.filter((p) => p.slot === "BENCH").length !== 6) { setMsg("Need 6 bench players"); alert("Pick a full bench of 6 before saving."); return; }
     const res = await fetch("/api/team/picks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
