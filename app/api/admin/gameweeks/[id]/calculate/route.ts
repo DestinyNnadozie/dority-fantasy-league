@@ -23,8 +23,7 @@ export async function POST(_: Request, ctx: { params: Promise<{ id: string }> })
   for (const p of picks) {
     if (p.slot !== "STARTING") continue;
     const raw = pts[p.playerId] || 0;
-    const add = p.isCaptain ? raw * 2 : raw;
-    byTeam[p.teamId] = (byTeam[p.teamId] || 0) + add;
+    byTeam[p.teamId] = (byTeam[p.teamId] || 0) + (p.isCaptain ? raw * 2 : raw);
   }
   for (const [teamId, score] of Object.entries(byTeam)) {
     await prisma.team.update({
@@ -32,6 +31,5 @@ export async function POST(_: Request, ctx: { params: Promise<{ id: string }> })
       data: { overallPoints: { increment: score } }
     });
   }
-  await prisma.gameweek.update({ where: { id: gwId }, data: { status: "COMPLETED" } });
   return NextResponse.json({ ok: true, teams: Object.keys(byTeam).length });
 }
