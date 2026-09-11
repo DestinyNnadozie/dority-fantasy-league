@@ -33,37 +33,36 @@ export async function PUT(req: Request) {
       playerId: string; slot: "STARTING" | "BENCH"; squadOrder: number;
       isCaptain: boolean; isViceCaptain: boolean;
     }[];
-    if (incoming.filter((p) => p.slot === "STARTING").length !== 9) {
+    const unique = incoming.filter((p, i, arr) => arr.findIndex((x) => x.playerId === p.playerId) === i);
+    if (unique.filter((p) => p.slot === "STARTING").length !== 9) {
       throw new Error("Starting lineup must be 9 players");
     }
     const players = await prisma.schoolPlayer.findMany({
-      where: { id: { in: incoming.map((p) => p.playerId) } }
+      where: { id: { in: unique.map((p) => p.playerId) } }
     });
     const byId = Object.fromEntries(players.map((p) => [p.id, p]));
-    const spent = incoming.reduce((s, p) => s + (byId[p.playerId]?.price ?? 9999), 0);
+    const spent = unique.reduce((s, p) => s + (byId[p.playerId]?.price ?? 9999), 0);
     if (spent > 3000) throw new Error("Over budget");
     const clubCount: Record<string, number> = {};
-    for (const p of incoming) {
+    for (const p of unique) {
       const club = byId[p.playerId]?.teamName || "Unknown";
       clubCount[club] = (clubCount[club] || 0) + 1;
       if (clubCount[club] > 4) throw new Error("Max 4 players from " + club);
     }
-    await prisma.$transaction([
-      prisma.squadPick.deleteMany({ where: { teamId: team.id, gameweekId: gw.id } }),
-      prisma.squadPick.createMany({
-        data: incoming.map((p) => ({
-          teamId: team.id,
-          playerId: p.playerId,
-          gameweekId: gw.id,
-          slot: p.slot,
-          squadOrder: p.squadOrder,
-          isCaptain: p.isCaptain,
-          isViceCaptain: p.isViceCaptain,
-          purchasePrice: byId[p.playerId].price
-        }))
-      }),
-      prisma.team.update({ where: { id: team.id }, data: { bank: 3000 - spent } })
-    ]);
+    await prisma.squadPick.deleteMany({ where: { teamId: team.id, gameweekId: gw.id } });
+    await prisma.squadPick.createMany({
+      data: unique.map((p, i) => ({
+        teamId: team.id,
+        playerId: p.playerId,
+        gameweekId: gw.id,
+        slot: p.slot,
+        squadOrder: p.squadOrder || i + 1,
+        isCaptain: p.isCaptain,
+        isViceCaptain: p.isViceCaptain,
+        purchasePrice: byId[p.playerId].price
+      }))
+    });
+    await prisma.team.update({ where: { id: team.id }, data: { bank: 3000 - spent } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });
