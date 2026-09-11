@@ -164,7 +164,7 @@ export default function SquadPage() {
 
   async function save() {
     if (over) { alert("You are over budget. Remove players before saving."); return; }
-    if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters (1 GK + 8)"); return; }`n    if (picks.filter((p) => p.slot === "BENCH").length !== 6) { setMsg("Need 6 bench players"); alert("Pick a full bench of 6 before saving."); return; }
+    if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters"); return; }
     const res = await fetch("/api/team/picks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -175,28 +175,20 @@ export default function SquadPage() {
     if (!res.ok) alert(data.error || "Could not save");
   }
 
-  const box = "flex h-28 flex-col justify-center rounded-2xl border border-blue-400/70 bg-blue-950 px-4";
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
       <section>
-        <h1 className="mb-3 text-3xl font-extrabold text-white">{teamName}</h1>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className={box}>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Team name</p>
-            <div className="mt-1 text-sm text-white"><RenameTeam current={teamName} onSaved={setTeamName} /></div>
-          </div>
-          <div className={box + (over ? " border-red-500 bg-red-950" : "")}>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Budget remaining</p>
-            <p className={"text-2xl font-black leading-tight " + (over ? "text-red-400" : "text-white")}>{bank.toFixed(1)}m</p>
-            <p className="text-[11px] text-blue-300">{starters.length}/9 start · {bench.length}/6 bench</p>
-          </div>
-          <div className={box}>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Formation</p>
-            <select value={formation} onChange={(e) => setFormation(e.target.value)} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
-              {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
-            </select>
-          </div>
+        <h1 className="text-3xl font-extrabold text-white">{teamName}</h1>
+        <RenameTeam current={teamName} onSaved={setTeamName} />
+        <div className={"mt-3 inline-block rounded-2xl border-2 px-5 py-3 " + (over ? "border-red-500 bg-red-950" : "border-blue-400 bg-blue-950")}>
+          <p className="text-xs uppercase tracking-wide text-blue-200">Budget remaining</p>
+          <p className={"text-3xl font-black " + (over ? "text-red-400" : "text-white")}>{bank.toFixed(1)}m</p>
+          <p className="text-xs text-blue-300">300.0m total · {starters.length}/9 start · {bench.length}/6 bench</p>
+        </div>
+        <div className="mt-3">
+          <select value={formation} onChange={(e) => setFormation(e.target.value)} className="rounded bg-black px-2 py-1 text-sm ring-1 ring-blue-500/30">
+            {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
+          </select>
         </div>
         {msg && <p className="mb-2 mt-2 text-sm text-yellow-300">{msg}</p>}
 
