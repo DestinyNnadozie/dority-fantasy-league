@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 
 type P = { id: string; firstName: string; lastName: string; position: string; teamName: string | null };
@@ -93,7 +93,7 @@ export default function AwardsPage() {
         <p className="text-white">{potw ? potw.firstName + " " + potw.lastName : (potwA?.playerName || "Not chosen")}</p>
         {admin && (
           <>
-            <div className="mt-2 flex flex-wrap gap-2">{listed.slice(0, 15).map((p) => <button key={p.id} onClick={() => setPotw(p)} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
+            <div className="mt-2 flex flex-wrap gap-2">{listed.map((p) => <button key={p.id} onClick={() => setPotw(p)} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
             <button onClick={() => potw && save({ kind: "POTW", playerName: potw.firstName + " " + potw.lastName, teamName: potw.teamName, label: "" })} className="mt-2 rounded bg-blue-600 px-4 py-2 text-black">Save player of the week</button>
           </>
         )}
@@ -104,7 +104,7 @@ export default function AwardsPage() {
         <p className="text-white">{pots ? pots.firstName + " " + pots.lastName : (potsA?.playerName || "Not chosen")}</p>
         {admin && (
           <>
-            <div className="mt-2 flex flex-wrap gap-2">{listed.slice(0, 15).map((p) => <button key={"ps"+p.id} onClick={() => setPots(p)} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
+            <div className="mt-2 flex flex-wrap gap-2">{listed.map((p) => <button key={"ps"+p.id} onClick={() => setPots(p)} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
             <button onClick={() => pots && save({ kind: "POTS", playerName: pots.firstName + " " + pots.lastName, teamName: pots.teamName, label: "" })} className="mt-2 rounded bg-blue-600 px-4 py-2 text-black">Save player of the season</button>
           </>
         )}
@@ -120,14 +120,14 @@ export default function AwardsPage() {
         <div className="rounded-2xl bg-black p-4">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search player to put on the selected slot" className="mb-2 w-full rounded bg-white p-3 text-black" />
           <ul className="max-h-40 overflow-auto">
-            {listed.slice(0, 25).map((p) => (
+            {listed.map((p) => (
               <li key={p.id}>
                 <button className="w-full py-2 text-left text-sm" onClick={() => {
                   if (!slot) { setMsg("Tap a TOTW or TOTS slot first"); return; }
                   if (p.position !== slot.pos) { setMsg("Need a " + slot.pos); return; }
                   setBoard(slot.board, { ...boardMap(slot.board), [slot.key]: p });
                   setSlot(null);
-                }}>{p.position} {p.lastName} · {p.teamName}</button>
+                }}>{p.position} {p.lastName} Â· {p.teamName}</button>
               </li>
             ))}
           </ul>
@@ -148,3 +148,4 @@ export default function AwardsPage() {
     </section>
   );
 }
+

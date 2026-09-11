@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 
 type P = { id: string; firstName: string; lastName: string; position: string; teamName: string | null };
@@ -42,7 +42,7 @@ export default function AdminAwardsPage() {
           <li key={p.id}>
             <button className="w-full py-2 text-left" onClick={() => {
               if (totw.length < 9) setTotw([...totw, p]);
-            }}>{p.position} {p.lastName} · {p.teamName}</button>
+            }}>{p.position} {p.lastName} Â· {p.teamName}</button>
           </li>
         ))}
       </ul>
@@ -91,7 +91,7 @@ export default function AdminAwardsPage() {
       <div className="rounded-2xl bg-black p-4">
         <h2 className="mb-2 text-yellow-300">Team of the season</h2>
         <ol className="mb-2 list-decimal pl-5 text-sm">{tots.map((p, i) => <li key={i}>{p.position} {p.lastName}</li>)}</ol>
-        <div className="flex flex-wrap gap-2">{listed.slice(0, 15).map((p) => <button key={"tots"+p.id} onClick={() => tots.length < 9 && setTots([...tots, p])} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{listed.map((p) => <button key={"tots"+p.id} onClick={() => tots.length < 9 && setTots([...tots, p])} className="rounded bg-blue-900 px-2 py-1 text-xs">{p.lastName}</button>)}</div>
         <div className="mt-2 flex gap-2">
           <button onClick={() => setTots([])} className="rounded bg-blue-950 px-3 py-1 text-sm">Clear TOTS</button>
           <button onClick={() => save({ kind: "TOTS", players: tots.map((p) => p.position + " " + p.lastName).join("\n") })} className="rounded bg-yellow-300 px-4 py-2 text-black">Save TOTS</button>
@@ -100,3 +100,4 @@ export default function AdminAwardsPage() {
     </section>
   );
 }
+
