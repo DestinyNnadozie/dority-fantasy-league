@@ -1,37 +1,23 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
-
-const file = path.join(process.cwd(), "data", "awards.json");
-
-async function readAwards() {
-  try { return JSON.parse(await fs.readFile(file, "utf8")); }
-  catch { return { totw: { gameweek: 1, playerIds: [] }, tots: { playerIds: [] } }; }
-}
-
+export const dynamic = "force-dynamic";
 export async function GET() {
-  const awards = await readAwards();
-  const ids = [...new Set([...(awards.totw.playerIds || []), ...(awards.tots.playerIds || [])])];
-  const players = ids.length
-    ? await prisma.schoolPlayer.findMany({ where: { id: { in: ids } } })
-    : [];
-  const byId = Object.fromEntries(players.map((p) => [p.id, p]));
-  return NextResponse.json({ awards, players: byId });
+  const awards = await prisma.award.findMany();
+  return NextResponse.json({ awards });
 }
-
-export async function PUT(req: Request) {
+export async function POST(req: Request) {
   const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const b = await req.json();
+  const kind = String(b.kind);
+  if (kind === "TOTW" || kind === "TOTS") {
+    await prisma.award.deleteMany({ where: { kind } });
+    const names = String(b.players || "").split("\n").map((s: string) => s.trim()).filter(Boolean);
+    await prisma.award.createMany({ data: names.map((n: string) => ({ kind, label: kind, playerName: n, teamName: "", fixtureKey: "" })) });
+    return NextResponse.json({ ok: true });
   }
-  const body = await req.json();
-  const current = await readAwards();
-  const next = {
-    totw: { gameweek: Number(body.totw?.gameweek || current.totw.gameweek || 1), playerIds: body.totw?.playerIds || current.totw.playerIds },
-    tots: { playerIds: body.tots?.playerIds || current.tots.playerIds }
-  };
-  await fs.writeFile(file, JSON.stringify(next, null, 2));
+  if (kind === "POTW") await prisma.award.deleteMany({ where: { kind: "POTW" } });
+  await prisma.award.create({ data: { kind, label: kind, playerName: String(b.playerName || ""), teamName: String(b.teamName || ""), fixtureKey: String(b.fixtureKey || "") } });
   return NextResponse.json({ ok: true });
 }
