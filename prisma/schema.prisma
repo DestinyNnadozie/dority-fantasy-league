@@ -49,6 +49,8 @@ model User {
   team              Team?
   leagueMemberships LeagueMember[]
   adminActions      AuditLog[]
+  emailVerified DateTime?
+verifyToken   String?
 }
 
 model Team {

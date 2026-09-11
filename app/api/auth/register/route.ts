@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "@/lib/db";
-import { setSessionCookie, signSession } from "@/lib/auth/session";
+import { sendVerifyEmail } from "@/lib/mail";
 
 export async function POST(req: Request) {
   try {
@@ -30,9 +31,18 @@ export async function POST(req: Request) {
       }
     });
 
-    const token = await signSession({ id: user.id, email: user.email, name: user.name, role: user.role });
-    await setSessionCookie(token);
-    return NextResponse.json({ ok: true });
+    const token = crypto.randomBytes(24).toString("hex");
+    await prisma.user.update({ where: { id: user.id }, data: { verifyToken: token } });
+    try {
+      await sendVerifyEmail(user.email, token);
+    } catch (e) {
+      console.error(e);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: "Check your email and tap Verify account before login."
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Register failed";
     return NextResponse.json({ error: message }, { status: 500 });
