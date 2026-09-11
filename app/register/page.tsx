@@ -13,19 +13,15 @@ export default function RegisterPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setMsg("Creating account…");
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, teamName, email, password })
     });
     const data = await res.json();
-    if (!res.ok) {
-      setMsg(data.error || "Register failed");
-      return;
-    }
-    setMsg(data.message || "Check your email and tap Verify account before login.");
-    setTimeout(() => router.push("/login"), 2500);
+    if (!res.ok) { setMsg(data.error || "Register failed"); return; }
+    router.push("/squad");
+    router.refresh();
   }
 
   return (
@@ -38,7 +34,7 @@ export default function RegisterPage() {
         <input required minLength={6} type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (6+ characters)" className="w-full rounded bg-white p-3 text-black" />
         <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-3 text-sm">eye</button>
       </div>
-      {msg && <p className="mb-3 text-sm text-yellow-300">{msg}</p>}
+      {msg && <p className="mb-3 text-sm text-red-400">{msg}</p>}
       <button className="w-full rounded-full bg-blue-600 py-3 font-semibold text-black">Register</button>
     </form>
   );
