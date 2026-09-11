@@ -82,8 +82,7 @@ export default function SquadPage() {
         teamName: x.player.teamName,
         gwPoints: x.player.gwPoints || 0,
         slot: x.slot,
-        isCaptain: x.isCaptain,
-        pitchKey: undefined
+        isCaptain: x.isCaptain
       }));
       setPicks(remapToFormation(saved, "3-3-2"));
       setLoaded(true);
@@ -115,8 +114,7 @@ export default function SquadPage() {
   function canAdd(player: P, asBench: boolean) {
     if (picks.some((p) => p.id === player.id)) return false;
     if (spent + player.price > 3000) {
-      alert("Budget exceeded. You only have " + bank.toFixed(1) + "m left. This player costs " + (player.price / 10).toFixed(1) + "m.");
-      setMsg("Over budget");
+      alert("Budget exceeded. You only have " + bank.toFixed(1) + "m left.");
       return false;
     }
     if (picks.filter((p) => p.teamName === player.teamName).length >= 4) {
@@ -153,7 +151,6 @@ export default function SquadPage() {
       return p;
     }));
     setSwapId(null);
-    setMsg("Substituted");
   }
 
   function tapPlayer(player: Pick) {
@@ -163,8 +160,9 @@ export default function SquadPage() {
   }
 
   async function save() {
-    if (over) { alert("You are over budget. Remove players before saving."); return; }
-    if (picks.filter((p) => p.slot === "STARTING").length !== 9) { setMsg("Need 9 starters"); return; }
+    if (over) { alert("You are over budget."); return; }
+    if (starters.length !== 9) { setMsg("Need 9 starters"); return; }
+    if (bench.length !== 6) { setMsg("Need 6 bench players"); return; }
     const res = await fetch("/api/team/picks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -175,22 +173,30 @@ export default function SquadPage() {
     if (!res.ok) alert(data.error || "Could not save");
   }
 
+  const box = "flex h-28 flex-col justify-center rounded-2xl border border-blue-400/70 bg-blue-950 px-4";
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
       <section>
-        <h1 className="text-3xl font-extrabold text-white">{teamName}</h1>
-        <RenameTeam current={teamName} onSaved={setTeamName} />
-        <div className={"mt-3 inline-block rounded-2xl border-2 px-5 py-3 " + (over ? "border-red-500 bg-red-950" : "border-blue-400 bg-blue-950")}>
-          <p className="text-xs uppercase tracking-wide text-blue-200">Budget remaining</p>
-          <p className={"text-3xl font-black " + (over ? "text-red-400" : "text-white")}>{bank.toFixed(1)}m</p>
-          <p className="text-xs text-blue-300">300.0m total · {starters.length}/9 start · {bench.length}/6 bench</p>
+        <h1 className="mb-3 text-3xl font-extrabold text-white">{teamName}</h1>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className={box}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Team name</p>
+            <div className="mt-1 text-sm text-white"><RenameTeam current={teamName} onSaved={setTeamName} /></div>
+          </div>
+          <div className={box + (over ? " border-red-500 bg-red-950" : "")}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Budget remaining</p>
+            <p className={"text-2xl font-black " + (over ? "text-red-400" : "text-white")}>{bank.toFixed(1)}m</p>
+            <p className="text-[11px] text-blue-300">{starters.length}/9 start · {bench.length}/6 bench</p>
+          </div>
+          <div className={box}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Formation</p>
+            <select value={formation} onChange={(e) => setFormation(e.target.value)} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
+              {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="mt-3">
-          <select value={formation} onChange={(e) => setFormation(e.target.value)} className="rounded bg-black px-2 py-1 text-sm ring-1 ring-blue-500/30">
-            {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
-          </select>
-        </div>
-        {msg && <p className="mb-2 mt-2 text-sm text-yellow-300">{msg}</p>}
+        {msg && <p className="mt-2 text-sm text-yellow-300">{msg}</p>}
 
         {menuPlayer && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setMenuId(null)}>
@@ -239,7 +245,7 @@ export default function SquadPage() {
             const active = selectedSlot?.key === key;
             return (
               <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, bench: true })} className={"relative h-16 rounded-xl bg-blue-950 text-[11px] ring-1 " + (active ? "ring-2 ring-yellow-300" : "ring-blue-500/30")}>
-                {player ? (<><span className="absolute right-1 top-1 text-[10px] text-yellow-300">{player.gwPoints || 0}</span>{player.position} {player.lastName}</>) : "BENCH"}
+                {player ? player.position + " " + player.lastName : "BENCH"}
               </button>
             );
           })}
@@ -262,7 +268,7 @@ export default function SquadPage() {
                   <span className="block truncate font-medium">{p.position} {p.lastName}</span>
                   <span className="block truncate text-xs text-blue-400">{p.firstName} · {p.teamName}</span>
                 </span>
-                <span className="shrink-0 text-right font-mono text-xs leading-5">
+                <span className="shrink-0 text-right font-mono text-xs">
                   <span className="block">{(p.price / 10).toFixed(1)}m</span>
                   <span className="block text-yellow-300">{p.gwPoints || 0} pts</span>
                 </span>
