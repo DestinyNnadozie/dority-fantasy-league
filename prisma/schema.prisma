@@ -224,3 +224,11 @@ model Award {
   fixtureKey String @default("")
 }
 
+model Prediction {
+  id         String @id @default(cuid())
+  userId     String
+  fixtureKey String
+  choice     String
+  @@unique([userId, fixtureKey])
+}
+

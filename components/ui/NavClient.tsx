@@ -36,6 +36,7 @@ export function NavClient() {
       <a href="/awards" onClick={() => setOpen(false)}>Awards</a>
       <a href="/leagues" onClick={() => setOpen(false)}>Leagues</a>
       <a href="/news" onClick={() => setOpen(false)}>News</a>
+      <a href="/predictions" onClick={() => setOpen(false)}>Predictions</a>
       {name && isAdmin && <a href="/admin" onClick={() => setOpen(false)} className="font-semibold text-yellow-300">Admin</a>}
       {name && isAdmin && <a href="/admin/users" onClick={() => setOpen(false)} className="font-semibold text-yellow-300">Users</a>}
       {name && isAdmin && <a href="/admin/players" onClick={() => setOpen(false)} className="font-semibold text-yellow-300">Players</a>}
