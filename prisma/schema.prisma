@@ -232,3 +232,10 @@ model Prediction {
   @@unique([userId, fixtureKey])
 }
 
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+}
+

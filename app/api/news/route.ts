@@ -1,43 +1,22 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
-
-const file = path.join(process.cwd(), "data", "news.json");
-
-async function readNews() {
-  try { return JSON.parse(await fs.readFile(file, "utf8")); }
-  catch { return []; }
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ news: await readNews() });
+  const news = await (prisma as any).news.findMany({ orderBy: { createdAt: "desc" } });
+  return NextResponse.json({ news });
 }
 
 export async function POST(req: Request) {
   const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
+  if (!session || (session.role !== "ADMIN" && session.email !== "coordinator@school.local")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const body = await req.json();
-  const items = await readNews();
-  items.unshift({
-    id: String(Date.now()),
-    title: String(body.title || "Update"),
-    body: String(body.body || ""),
-    date: new Date().toISOString().slice(0, 10)
-  });
-  await fs.writeFile(file, JSON.stringify(items, null, 2));
-  return NextResponse.json({ ok: true });
-}
-
-export async function DELETE(req: Request) {
-  const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const { id } = await req.json();
-  const items = (await readNews()).filter((n: any) => n.id !== String(id));
-  await fs.writeFile(file, JSON.stringify(items, null, 2));
-  return NextResponse.json({ ok: true });
+  const b = await req.json();
+  const title = String(b.title || "").trim();
+  const body = String(b.body || b.content || "").trim();
+  if (!title || !body) return NextResponse.json({ error: "Need title and body" }, { status: 400 });
+  const item = await (prisma as any).news.create({ data: { title, body } });
+  return NextResponse.json({ item });
 }
