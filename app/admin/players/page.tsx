@@ -52,6 +52,37 @@ export default function AdminPlayersPage() {
       <p className="text-sm text-blue-300">Edit price (millions), team and position, then Save on that row. Icons default to team Icons.</p>
       {msg && <p className="text-sm text-yellow-300">{msg}</p>}
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search team or name" className="w-full rounded bg-white p-3 text-black" />
+      <form
+        className="grid gap-2 rounded-2xl bg-black p-4 sm:grid-cols-5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const res = await fetch("/api/admin/players", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              firstName: fd.get("firstName"),
+              lastName: fd.get("lastName"),
+              position: fd.get("position"),
+              teamName: fd.get("teamName"),
+              priceDisplay: fd.get("price")
+            })
+          });
+          setMsg(res.ok ? "Player added" : "Failed");
+          if (res.ok) window.location.reload();
+        }}
+      >
+        <input name="firstName" placeholder="First name" className="rounded bg-white p-2 text-black" required />
+        <input name="lastName" placeholder="Last name" className="rounded bg-white p-2 text-black" required />
+        <select name="position" className="rounded bg-white p-2 text-black">
+          {POS.map((t) => <option key={t}>{t}</option>)}
+        </select>
+        <select name="teamName" className="rounded bg-white p-2 text-black">
+          {TEAMS.map((t) => <option key={t}>{t}</option>)}
+        </select>
+        <input name="price" type="number" step="0.1" defaultValue="5" className="rounded bg-white p-2 text-black" />
+        <button className="rounded bg-yellow-300 px-3 py-2 text-black sm:col-span-5">Add player</button>
+      </form>
       {Object.entries(groups).map(([g, list]) => {
         const rows = list.filter((p) =>
           !q ||

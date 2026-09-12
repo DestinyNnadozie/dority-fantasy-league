@@ -21,7 +21,18 @@ export async function POST(req: Request) {
   }
   const b = await req.json();
   const id = String(b.id || "");
-  if (!id) return NextResponse.json({ error: "Bad data" }, { status: 400 });
+  if (!id) {
+    const firstName = String(b.firstName || "").trim();
+    const lastName = String(b.lastName || "").trim();
+    const position = String(b.position || "DEF");
+    const teamName = String(b.teamName || "Icons");
+    const price = Math.round(Number(b.priceDisplay || b.price || 5) * 10);
+    if (!firstName || !lastName) return NextResponse.json({ error: "Need name" }, { status: 400 });
+    const player = await prisma.schoolPlayer.create({
+      data: { firstName, lastName, position, teamName, price }
+    });
+    return NextResponse.json({ player });
+  }
   const data: any = {};
   if (b.price !== undefined) {
     const price = Number(b.price);
