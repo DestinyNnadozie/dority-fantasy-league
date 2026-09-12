@@ -5,49 +5,69 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
 
-  async function load() {
-    const res = await fetch("/api/admin/players");
-    const data = await res.json();
-    setPlayers(data.players || []);
-    if (!res.ok) setMsg(data.error || "Forbidden");
-  }
-  useEffect(() => { load(); }, []);
-
-  async function save(id: string, teamName: string, position: string) {
-    const res = await fetch("/api/admin/players", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, teamName, position })
+  useEffect(() => {
+    fetch("/api/admin/players").then((r) => r.json()).then((d) => {
+      const list = d.players || [];
+      setPlayers(list);
+      const v: Record<string, string> = {};
+      for (const p of list) v[p.id] = String(p.price / 10);
+      setValues(v);
     });
-    setMsg(res.ok ? "Player updated" : "Update failed");
-    load();
+  }, []);
+
+  async function savePrice(id: string) {
+    const price = Math.round(Number(values[id]) * 10);
+    if (Number.isNaN(price)) return;
+    const res = await fetch("/api/admin/players", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, price })
+    });
+    setMsg(res.ok ? "Saved " + id : "Failed");
+  }
+
+  const groups: Record<string, any[]> = {};
+  for (const p of players) {
+    const g = p.teamName || "Unknown";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
   }
 
   return (
-    <section className="rounded-2xl border border-blue-500/20 bg-black p-4">
-      <h1 className="mb-3 text-xl font-semibold text-blue-300">Edit players</h1>
-      <p className="mb-3 text-xs text-blue-400">Change club or position after a real transfer. Current list stays until you save.</p>
-      {msg && <p className="mb-3 text-sm text-yellow-300">{msg}</p>}
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name" className="mb-3 w-full rounded bg-white p-2 text-black" />
-      <div className="space-y-2">
-        {players.filter((p) => (p.firstName + " " + p.lastName).toLowerCase().includes(q.toLowerCase())).map((p) => (
-          <form key={p.id} onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            save(p.id, String(f.get("teamName")), String(f.get("position")));
-          }} className="grid grid-cols-1 gap-2 rounded-xl bg-zinc-950 p-3 text-sm sm:grid-cols-5">
-            <p className="sm:col-span-2">{p.firstName} {p.lastName}<span className="block text-xs text-blue-400">{(p.price/10).toFixed(1)}m</span></p>
-            <select name="teamName" defaultValue={p.teamName} className="rounded bg-white p-2 text-black">
-              {["Marseille","PSG","Lyon","Monaco"].map((t) => <option key={t}>{t}</option>)}
-            </select>
-            <select name="position" defaultValue={p.position} className="rounded bg-white p-2 text-black">
-              {["GK","DEF","MID","FWD"].map((t) => <option key={t}>{t}</option>)}
-            </select>
-            <button className="rounded bg-blue-600 p-2 text-black">Save</button>
-          </form>
-        ))}
-      </div>
+    <section className="space-y-4">
+      <h1 className="text-xl font-semibold text-yellow-300">Players — market values</h1>
+      <p className="text-sm text-blue-300">Type the millions (100, 150, 200) then tap Save on that row.</p>
+      {msg && <p className="text-sm text-yellow-300">{msg}</p>}
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search team or name" className="w-full rounded bg-white p-3 text-black" />
+      {Object.entries(groups).map(([g, list]) => {
+        const rows = list.filter((p) =>
+          !q ||
+          g.toLowerCase().includes(q.toLowerCase()) ||
+          (p.firstName + " " + p.lastName).toLowerCase().includes(q.toLowerCase())
+        );
+        if (!rows.length) return null;
+        return (
+          <div key={g} className="rounded-2xl bg-black p-4">
+            <h2 className="mb-2 font-semibold text-blue-300">{g}</h2>
+            <ul className="space-y-2">
+              {rows.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="w-10 text-blue-400">{p.position}</span>
+                  <span className="min-w-[10rem] flex-1 text-white">{p.firstName} {p.lastName}</span>
+                  <input
+                    value={values[p.id] ?? ""}
+                    onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
+                    className="w-20 rounded bg-white p-1 text-black"
+                  />
+                  <button className="rounded bg-blue-600 px-3 py-1 text-black" onClick={() => savePrice(p.id)}>Save</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </section>
   );
 }
