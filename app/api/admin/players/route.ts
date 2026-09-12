@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const price = Math.round(Number(b.priceDisplay || b.price || 5) * 10);
     if (!firstName || !lastName) return NextResponse.json({ error: "Need name" }, { status: 400 });
     const player = await prisma.schoolPlayer.create({
-      data: { firstName, lastName, position, teamName, price }
+      data: { firstName, lastName, position: position as any, teamName, price }
     });
     return NextResponse.json({ player });
   }
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     data.price = price;
   }
   if (b.teamName !== undefined) data.teamName = String(b.teamName);
-  if (b.position !== undefined) data.position = String(b.position);
+  if (b.position !== undefined) data.position = String(b.position) as any;
   const player = await prisma.schoolPlayer.update({ where: { id }, data });
   return NextResponse.json({ player });
 }
