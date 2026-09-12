@@ -75,6 +75,17 @@ export default function SquadPage() {
   const [teamName, setTeamName] = useState("Your team");
   const [msg, setMsg] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.json()).then((d) => {
+      if (!d.user) {
+        window.location.href = "/login";
+        return;
+      }
+      setLoggedIn(true);
+    });
+  }, []);
 
   useEffect(() => {
     Promise.all([fetch("/api/players"), fetch("/api/team/picks")]).then(async ([pr, tr]) => {
@@ -121,6 +132,11 @@ export default function SquadPage() {
   }
 
   function canAdd(player: P, asBench: boolean) {
+    if (!loggedIn) {
+      alert("Login or Register first");
+      window.location.href = "/login";
+      return false;
+    }
     if (picks.some((p) => p.id === player.id)) return false;
     if (spent + player.price > 3000) {
       alert("Budget exceeded. You only have " + bank.toFixed(1) + "m left.");
@@ -169,6 +185,10 @@ export default function SquadPage() {
   }
 
   async function save() {
+    if (!loggedIn) {
+      window.location.href = "/login";
+      return;
+    }
     if (over) { alert("You are over budget."); return; }
     if (starters.length !== 9) { setMsg("Need 9 starters"); return; }
     if (bench.length !== 6) { setMsg("Need 6 bench players"); return; }
