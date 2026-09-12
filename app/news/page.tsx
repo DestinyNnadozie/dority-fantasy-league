@@ -14,6 +14,7 @@ export default function NewsPage() {
 
   useEffect(() => {
     load();
+    localStorage.setItem("newsReadAt", String(Date.now()));
     fetch("/api/auth/me").then((r) => r.json()).then((d) => {
       const u = d.user;
       setAdmin(!!u && (u.role === "ADMIN" || u.email === "coordinator@school.local"));

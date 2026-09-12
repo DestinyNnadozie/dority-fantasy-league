@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { NewsBadge } from "@/components/NewsBadge";
 
 export function NavClient() {
   const [name, setName] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function NavClient() {
       <a href="/rankings" onClick={() => setOpen(false)}>Rankings</a>
       <a href="/awards" onClick={() => setOpen(false)}>Awards</a>
       <a href="/leagues" onClick={() => setOpen(false)}>Leagues</a>
-      <a href="/news" onClick={() => setOpen(false)}>News</a>
+      <a href="/news" onClick={() => setOpen(false)} className="inline-flex items-center">News<NewsBadge /></a>
       <a href="/predictions" onClick={() => setOpen(false)}>Predictions</a>
       {name && isAdmin && <a href="/admin" onClick={() => setOpen(false)} className="font-semibold text-yellow-300">Admin</a>}
       {name && isAdmin && <a href="/admin/users" onClick={() => setOpen(false)} className="font-semibold text-yellow-300">Users</a>}
