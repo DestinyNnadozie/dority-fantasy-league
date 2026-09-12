@@ -21,8 +21,15 @@ export async function POST(req: Request) {
   }
   const b = await req.json();
   const id = String(b.id || "");
-  const price = Number(b.price);
-  if (!id || Number.isNaN(price)) return NextResponse.json({ error: "Bad data" }, { status: 400 });
-  const player = await prisma.schoolPlayer.update({ where: { id }, data: { price } });
+  if (!id) return NextResponse.json({ error: "Bad data" }, { status: 400 });
+  const data: any = {};
+  if (b.price !== undefined) {
+    const price = Number(b.price);
+    if (Number.isNaN(price)) return NextResponse.json({ error: "Bad price" }, { status: 400 });
+    data.price = price;
+  }
+  if (b.teamName !== undefined) data.teamName = String(b.teamName);
+  if (b.position !== undefined) data.position = String(b.position);
+  const player = await prisma.schoolPlayer.update({ where: { id }, data });
   return NextResponse.json({ player });
 }
