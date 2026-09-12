@@ -15,6 +15,15 @@ const FORMATIONS: Record<string, Pos[][]> = {
   "3-2-3": [["GK"],["DEF","DEF","DEF"],["MID","MID"],["FWD","FWD","FWD"]]
 };
 
+function isIcon(p?: { teamName?: string | null }) {
+  return (p?.teamName || "").toLowerCase() === "icons";
+}
+function cardClass(icon: boolean, active: boolean, bench = false) {
+  if (icon) return "relative rounded-xl bg-gradient-to-b from-yellow-600 via-black to-black text-[11px] ring-2 " + (active ? "ring-yellow-200" : "ring-yellow-500");
+  if (bench) return "relative h-16 rounded-xl bg-blue-950 text-[11px] ring-1 " + (active ? "ring-2 ring-yellow-300" : "ring-blue-500/30");
+  return "relative flex h-24 w-20 flex-col items-center justify-center rounded-xl bg-black/35 text-[11px] ring-1 " + (active ? "ring-2 ring-yellow-300" : "ring-white/40");
+}
+
 function remapToFormation(prev: Pick[], formation: string): Pick[] {
   const rows = FORMATIONS[formation];
   const slots: { key: string; pos: Pos }[] = [];
@@ -58,7 +67,7 @@ export default function SquadPage() {
   const [market, setMarket] = useState<P[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [formation, setFormation] = useState("3-3-2");
-  const [filter, setFilter] = useState<"ALL"|Pos>("ALL");
+  const [filter, setFilter] = useState<"ALL"|"ICON"|Pos>("ALL");
   const [query, setQuery] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<{ key: string; pos?: Pos; bench?: boolean } | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -103,7 +112,7 @@ export default function SquadPage() {
   const menuPlayer = picks.find((p) => p.id === menuId);
   const listed = market.filter((p) =>
     !picks.some((x) => x.id === p.id) &&
-    (filter === "ALL" || p.position === filter) &&
+    (filter === "ALL" || (filter === "ICON" && isIcon(p)) || p.position === filter) &&
     (p.firstName + " " + p.lastName).toLowerCase().includes(query.toLowerCase())
   );
 
@@ -201,7 +210,7 @@ export default function SquadPage() {
         {menuPlayer && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setMenuId(null)}>
             <div className="w-full max-w-sm rounded-2xl bg-zinc-900 p-4" onClick={(e) => e.stopPropagation()}>
-              <p className="mb-3 text-white">{menuPlayer.position} {menuPlayer.lastName}</p>
+              <p className="mb-3 text-white">{menuPlayer.position} {menuPlayer.lastName} {isIcon(menuPlayer) ? "· ICON" : ""}</p>
               {menuPlayer.slot === "STARTING" && <button type="button" className="mb-2 min-h-12 w-full rounded-xl bg-yellow-300 text-black" onClick={() => { setPicks((prev) => prev.map((p) => ({ ...p, isCaptain: p.id === menuPlayer.id }))); setMenuId(null); }}>Make captain</button>}
               <button type="button" className="mb-2 min-h-12 w-full rounded-xl bg-blue-600 text-black" onClick={() => { setSwapId(menuPlayer.id); setMenuId(null); }}>Substitute</button>
               <button type="button" className="min-h-12 w-full rounded-xl bg-red-600 text-white" onClick={() => { setPicks((prev) => prev.filter((p) => p.id !== menuPlayer.id)); setMenuId(null); }}>Remove player</button>
@@ -220,12 +229,13 @@ export default function SquadPage() {
                   const player = playerInSlot(key);
                   const active = selectedSlot?.key === key;
                   return (
-                    <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, pos, bench: false })} className={"relative flex h-24 w-20 flex-col items-center justify-center rounded-xl bg-black/35 text-[11px] ring-1 " + (active ? "ring-2 ring-yellow-300" : "ring-white/40")}>
+                    <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, pos, bench: false })} className={"flex h-24 w-20 flex-col items-center justify-center " + cardClass(isIcon(player), active)}>
                       {player ? (
                         <>
                           <span className="absolute right-1 top-1 rounded bg-black/70 px-1 text-[10px] font-bold text-yellow-300">{player.isCaptain ? (player.gwPoints || 0) * 2 : (player.gwPoints || 0)}</span>
                           <span className="text-yellow-200">{player.position}</span>
                           <span className="font-medium text-white">{player.lastName}</span>
+                          {isIcon(player) && <span className="text-[9px] text-yellow-400">ICON</span>}
                           {player.isCaptain && <span className="bg-yellow-300 px-1 text-black">C</span>}
                         </>
                       ) : pos}
@@ -244,7 +254,7 @@ export default function SquadPage() {
             const player = playerInSlot(key);
             const active = selectedSlot?.key === key;
             return (
-              <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, bench: true })} className={"relative h-16 rounded-xl bg-blue-950 text-[11px] ring-1 " + (active ? "ring-2 ring-yellow-300" : "ring-blue-500/30")}>
+              <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, bench: true })} className={cardClass(isIcon(player), active, true) + " flex items-center justify-center"}>
                 {player ? player.position + " " + player.lastName : "BENCH"}
               </button>
             );
@@ -256,16 +266,16 @@ export default function SquadPage() {
       <aside className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search player name" className="mb-3 w-full rounded-lg bg-white p-3 text-black" />
         <div className="mb-3 flex flex-wrap gap-2">
-          {(["ALL","GK","DEF","MID","FWD"] as const).map((f) => (
+          {(["ALL","ICON","GK","DEF","MID","FWD"] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)} className={"rounded-full px-3 py-1 text-xs " + (filter===f ? "bg-blue-600 text-black" : "bg-blue-950 text-blue-200")}>{f}</button>
           ))}
         </div>
         <ul className="max-h-[640px] space-y-1 overflow-y-auto text-sm">
           {listed.map((p) => (
             <li key={p.id}>
-              <button onClick={() => selectedSlot ? place(p, selectedSlot.key, !!selectedSlot.bench, selectedSlot.pos) : setMsg("Tap an empty card first")} className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-blue-950">
+              <button onClick={() => selectedSlot ? place(p, selectedSlot.key, !!selectedSlot.bench, selectedSlot.pos) : setMsg("Tap an empty card first")} className={"grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-2 py-2 text-left " + (isIcon(p) ? "bg-gradient-to-r from-yellow-800 to-black ring-1 ring-yellow-500" : "hover:bg-blue-950")}>
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{p.position} {p.lastName}</span>
+                  <span className="block truncate font-medium">{p.position} {p.lastName} {isIcon(p) ? "★" : ""}</span>
                   <span className="block truncate text-xs text-blue-400">{p.firstName} · {p.teamName}</span>
                 </span>
                 <span className="shrink-0 text-right font-mono text-xs">
