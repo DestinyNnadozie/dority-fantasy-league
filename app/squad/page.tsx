@@ -250,14 +250,14 @@ export default function SquadPage() {
         <div className="relative mt-4 min-h-[620px] overflow-hidden rounded-2xl border-4 border-white/80 bg-[#15803d] p-6">
           <Markings />
           <div className="relative z-10 flex min-h-[572px] flex-col justify-between py-2">
-            {rows.map((row, i) => (
+                       {rows.map((row, i) => (
               <div key={i} className="flex justify-center gap-4">
                 {row.map((pos, j) => {
                   const key = pos + "-" + i + "-" + j;
                   const player = playerInSlot(key);
                   const active = selectedSlot?.key === key;
                   return (
-                    <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, pos, bench: false })} className={"flex h-24 w-20 flex-col items-center justify-center " + cardClass(isIcon(player), active)}>
+                    <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, pos, bench: false })} className={"flex h-24 w-20 flex-col items-center justify-center " + cardClass(isIcon(player), active) + (swapId && player && player.id === swapId ? " ring-4 ring-yellow-300 animate-pulse" : "")}>
                       {player ? (
                         <>
                           <span className="absolute right-1 top-1 rounded bg-black/70 px-1 text-[10px] font-bold text-yellow-300">{player.isCaptain ? (player.gwPoints || 0) * 2 : (player.gwPoints || 0)}</span>
@@ -282,7 +282,7 @@ export default function SquadPage() {
             const player = playerInSlot(key);
             const active = selectedSlot?.key === key;
             return (
-              <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, bench: true })} className={cardClass(isIcon(player), active, true) + " flex items-center justify-center"}>
+              <button key={key} type="button" onClick={() => player ? tapPlayer(player) : setSelectedSlot({ key, bench: true })} className={cardClass(isIcon(player), active, true) + " flex items-center justify-center" + (swapId ? " ring-4 ring-yellow-300 animate-pulse" : "")}>
                 {player ? player.position + " " + player.lastName : "BENCH"}
               </button>
             );
