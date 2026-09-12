@@ -40,6 +40,9 @@ export async function PUT(req: Request) {
     if (unique.filter((p) => p.slot === "BENCH").length !== 6) {
       throw new Error("Need 6 bench players");
     }
+    if (!unique.some((p) => p.slot === "STARTING" && p.isCaptain)) {
+      throw new Error("Choose a captain");
+    }
     const players = await prisma.schoolPlayer.findMany({
       where: { id: { in: unique.map((p) => p.playerId) } }
     });
@@ -54,6 +57,7 @@ export async function PUT(req: Request) {
     }
     await prisma.squadPick.deleteMany({ where: { teamId: team.id, gameweekId: gw.id } });
     await prisma.squadPick.createMany({
+      skipDuplicates: true,
       data: unique.map((p, i) => ({
         teamId: team.id,
         playerId: p.playerId,

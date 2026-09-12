@@ -188,7 +188,7 @@ export default function SquadPage() {
     setMenuId(player.id);
   }
 
-  async function save() {
+   async function save() {
     if (!loggedIn) {
       window.location.href = "/login";
       return;
@@ -196,6 +196,10 @@ export default function SquadPage() {
     if (over) { alert("You are over budget."); return; }
     if (starters.length !== 9) { setMsg("Need 9 starters"); return; }
     if (bench.length !== 6) { setMsg("Need 6 bench players"); return; }
+    if (!picks.some((p) => p.slot === "STARTING" && p.isCaptain)) {
+      setMsg("Choose a captain");
+      return;
+    }
     const res = await fetch("/api/team/picks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -206,7 +210,6 @@ export default function SquadPage() {
     if (res.ok) setDirty(false);
     if (!res.ok) alert(data.error || "Could not save");
   }
-
   const box = "flex h-28 flex-col justify-center rounded-2xl border border-blue-400/70 bg-blue-950 px-4";
 
   return (
