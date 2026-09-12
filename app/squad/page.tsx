@@ -76,6 +76,7 @@ export default function SquadPage() {
   const [msg, setMsg] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [dirty, setDirty] = useState(true);
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => {
@@ -105,6 +106,7 @@ export default function SquadPage() {
         isCaptain: x.isCaptain
       }));
       setPicks(remapToFormation(saved, "3-3-2"));
+      if (saved.length) setDirty(false);
       setLoaded(true);
     });
   }, []);
@@ -163,6 +165,7 @@ export default function SquadPage() {
     }));
     setSelectedSlot(null);
     setMsg("");
+    setDirty(true);
   }
 
   function swapPlayers(aId: string, bId: string) {
@@ -176,6 +179,7 @@ export default function SquadPage() {
       return p;
     }));
     setSwapId(null);
+    setDirty(true);
   }
 
   function tapPlayer(player: Pick) {
@@ -199,6 +203,7 @@ export default function SquadPage() {
     });
     const data = await res.json();
     setMsg(res.ok ? "Squad saved" : data.error || "Could not save");
+    if (res.ok) setDirty(false);
     if (!res.ok) alert(data.error || "Could not save");
   }
 
@@ -220,7 +225,7 @@ export default function SquadPage() {
           </div>
           <div className={box}>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Formation</p>
-            <select value={formation} onChange={(e) => setFormation(e.target.value)} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
+            <select value={formation} onChange={(e) => { setFormation(e.target.value); setDirty(true); }} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
               {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
             </select>
           </div>
@@ -231,9 +236,9 @@ export default function SquadPage() {
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setMenuId(null)}>
             <div className="w-full max-w-sm rounded-2xl bg-zinc-900 p-4" onClick={(e) => e.stopPropagation()}>
               <p className="mb-3 text-white">{menuPlayer.position} {menuPlayer.lastName} {isIcon(menuPlayer) ? "· ICON" : ""}</p>
-              {menuPlayer.slot === "STARTING" && <button type="button" className="mb-2 min-h-12 w-full rounded-xl bg-yellow-300 text-black" onClick={() => { setPicks((prev) => prev.map((p) => ({ ...p, isCaptain: p.id === menuPlayer.id }))); setMenuId(null); }}>Make captain</button>}
+              {menuPlayer.slot === "STARTING" && <button type="button" className="mb-2 min-h-12 w-full rounded-xl bg-yellow-300 text-black" onClick={() => { setPicks((prev) => prev.map((p) => ({ ...p, isCaptain: p.id === menuPlayer.id }))); setMenuId(null); setDirty(true); }}>Make captain</button>}
               <button type="button" className="mb-2 min-h-12 w-full rounded-xl bg-blue-600 text-black" onClick={() => { setSwapId(menuPlayer.id); setMenuId(null); }}>Substitute</button>
-              <button type="button" className="min-h-12 w-full rounded-xl bg-red-600 text-white" onClick={() => { setPicks((prev) => prev.filter((p) => p.id !== menuPlayer.id)); setMenuId(null); }}>Remove player</button>
+              <button type="button" className="min-h-12 w-full rounded-xl bg-red-600 text-white" onClick={() => { setPicks((prev) => prev.filter((p) => p.id !== menuPlayer.id)); setMenuId(null); setDirty(true); }}>Remove player</button>
               <button type="button" className="mt-2 text-sm text-blue-300" onClick={() => setMenuId(null)}>Cancel</button>
             </div>
           </div>
@@ -280,7 +285,9 @@ export default function SquadPage() {
             );
           })}
         </div>
-        <button onClick={save} className="mt-4 rounded-full bg-blue-600 px-5 py-2 text-sm text-black">Save squad</button>
+        {dirty && (
+          <button onClick={save} className="mt-4 rounded-full bg-blue-600 px-5 py-2 text-sm text-black">Save squad</button>
+        )}
       </section>
 
       <aside className="rounded-2xl border border-blue-500/20 bg-black p-4">
