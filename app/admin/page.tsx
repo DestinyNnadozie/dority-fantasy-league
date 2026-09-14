@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 type Player = { id: string; firstName: string; lastName: string; position: string; teamName: string | null };
 type GW = { id: number; name: string; deadline: string; status: string };
 
+const TEAM_ORDER = ["Marseille", "PSG", "Lyon", "Monaco", "Icons"];
+
 export default function AdminPage() {
   const [allowed, setAllowed] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -44,6 +46,17 @@ export default function AdminPage() {
   const gwId = openGw?.id || 1;
   const box = "min-h-12 w-full rounded-xl bg-white p-3 text-base text-black";
   const btn = "min-h-12 w-full rounded-xl bg-blue-600 px-4 text-base font-medium text-black";
+
+  const groups: Record<string, Player[]> = {};
+  for (const p of players) {
+    const g = p.teamName || "Other";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  }
+  const groupNames = [
+    ...TEAM_ORDER.filter((t) => groups[t]?.length),
+    ...Object.keys(groups).filter((t) => TEAM_ORDER.indexOf(t) === -1)
+  ];
 
   async function saveDeadline(e: React.FormEvent) {
     e.preventDefault();
@@ -118,8 +131,12 @@ export default function AdminPage() {
       <form onSubmit={saveStats} className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="text-lg font-semibold text-blue-300">Match stats</h2>
         <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className={box}>
-          {players.map((p) => (
-            <option key={p.id} value={p.id}>{p.position} {p.lastName} ({p.teamName})</option>
+          {groupNames.map((team) => (
+            <optgroup key={team} label={team}>
+              {groups[team].map((p) => (
+                <option key={p.id} value={p.id}>{p.position} {p.firstName} {p.lastName}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <input name="minutes" type="number" inputMode="numeric" placeholder="Minutes" className={box} />

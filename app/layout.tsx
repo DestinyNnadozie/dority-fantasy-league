@@ -1,6 +1,7 @@
 import "./globals.css";
 import { NavClient } from "@/components/ui/NavClient";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
+import { SquadNudge } from "@/components/SquadNudge";
 
 export const metadata = {
   title: "Dority Fantasy League",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="antialiased">
         <NavClient />
+        <SquadNudge />
         <DeadlineBanner />
         <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">{children}</main>
       </body>

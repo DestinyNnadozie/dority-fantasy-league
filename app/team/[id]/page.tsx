@@ -5,6 +5,10 @@ import { useParams } from "next/navigation";
 type Pos = "GK"|"DEF"|"MID"|"FWD";
 const FORMATION: Pos[][] = [["GK"],["DEF","DEF","DEF"],["MID","MID","MID"],["FWD","FWD"]];
 
+function isIcon(p?: { teamName?: string | null }) {
+  return (p?.teamName || "").toLowerCase() === "icons";
+}
+
 function Markings() {
   return (
     <svg viewBox="0 0 100 140" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
@@ -46,12 +50,13 @@ export default function ViewTeamPage() {
                 const pick = take(pos);
                 const pl = pick?.player;
                 return (
-                  <div key={pos + j} className="relative flex h-24 w-20 flex-col items-center justify-center rounded-xl bg-black/35 text-[11px] ring-1 ring-white/40">
+                  <div key={pos + j} className={"relative flex h-24 w-20 flex-col items-center justify-center rounded-xl text-[11px] ring-1 " + (isIcon(pl) ? "bg-gradient-to-b from-yellow-600 via-black to-black ring-yellow-500" : "bg-black/35 ring-white/40")}>
                     {pl ? (
                       <>
                         <span className="absolute right-1 top-1 rounded bg-black/70 px-1 text-[10px] font-bold text-yellow-300">{pick.isCaptain ? (pl.gwPoints || 0) * 2 : (pl.gwPoints || 0)}</span>
                         <span className="text-yellow-200">{pl.position}</span>
                         <span className="font-medium text-white">{pl.lastName}</span>
+                        {isIcon(pl) && <span className="text-[9px] text-yellow-400">ICON</span>}
                         {pick.isCaptain && <span className="bg-yellow-300 px-1 text-black">C</span>}
                       </>
                     ) : pos}
@@ -66,8 +71,9 @@ export default function ViewTeamPage() {
       <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => {
           const pick = bench[i];
+          const pl = pick?.player;
           return (
-            <div key={i} className="relative h-16 rounded-xl bg-blue-950 text-center text-[11px] leading-[4rem] ring-1 ring-blue-500/30">
+            <div key={i} className={"relative h-16 rounded-xl text-center text-[11px] leading-[4rem] ring-1 " + (isIcon(pl) ? "bg-gradient-to-b from-yellow-600 via-black to-black ring-yellow-500" : "bg-blue-950 ring-blue-500/30")}>
               {pick ? pick.player.position + " " + pick.player.lastName : "BENCH"}
             </div>
           );
