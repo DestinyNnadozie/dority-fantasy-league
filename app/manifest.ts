@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Dority Fantasy League",
-    short_name: "Dority FPL",
+    name: "D-Ligue 1 Fantasy",
+    short_name: "D-Ligue 1",
     description: "School fantasy football",
     start_url: "/",
     display: "standalone",

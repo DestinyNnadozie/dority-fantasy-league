@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-blue-500/20 bg-black p-6">
-        <p className="text-sm uppercase tracking-wide text-blue-400">Dority Fantasy League</p>
+        <p className="text-sm uppercase tracking-wide text-blue-400">D-Ligue 1 Fantasy</p>
         <h1 className="mt-2 text-3xl font-black text-white">Pick your 9. Chase the table.</h1>
         <p className="mt-2 max-w-2xl text-sm text-blue-200">
           Build a squad from Marseille, PSG, Lyon and Monaco. Save before the deadline. Points follow real school matches.

@@ -4,7 +4,7 @@ import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { SquadNudge } from "@/components/SquadNudge";
 
 export const metadata = {
-  title: "Dority Fantasy League",
+  title: "D-Ligue 1 Fantasy",
   description: "School fantasy league",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 };

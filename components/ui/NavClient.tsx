@@ -58,7 +58,7 @@ export function NavClient() {
   return (
     <header className="border-b border-blue-500/20 bg-black">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-3">
-        <a href="/" className="font-semibold text-blue-400">Dority Fantasy League</a>
+        <a href="/" className="font-semibold text-blue-400">D-Ligue 1 Fantasy</a>
         <button type="button" className="rounded-lg px-3 py-2 text-sm text-white md:hidden" onClick={() => setOpen(!open)}>
           {open ? "Close" : "Menu"}
         </button>
