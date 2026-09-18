@@ -1,56 +1,50 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
+export const dynamic = "force-dynamic";
 
-const file = path.join(process.cwd(), "data", "fixtures.json");
-async function readFix() {
-  try { return JSON.parse(await fs.readFile(file, "utf8")); }
-  catch { return []; }
+function isAdmin(session: any) {
+  return session && (session.role === "ADMIN" || session.role === "TEACHER" || session.email === "coordinator@school.local");
 }
 
 export async function GET() {
-  return NextResponse.json({ fixtures: await readFix() });
+  const fixtures = await (prisma as any).fixture.findMany({ orderBy: { kickoff: "asc" } });
+  return NextResponse.json({ fixtures });
 }
 
 export async function POST(req: Request) {
   const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const body = await req.json();
-  const items = await readFix();
-  items.push({
-    id: String(Date.now()),
-    gameweekId: Number(body.gameweekId || 1),
-    kickoff: String(body.kickoff || ""),
-    home: String(body.home || ""),
-    away: String(body.away || ""),
-    homeGoals: body.homeGoals === "" || body.homeGoals == null ? "" : Number(body.homeGoals),
-    awayGoals: body.awayGoals === "" || body.awayGoals == null ? "" : Number(body.awayGoals)
+  if (!isAdmin(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const b = await req.json();
+  const home = String(b.home || "");
+  const away = String(b.away || "");
+  if (!home || !away || home === away) return NextResponse.json({ error: "Pick two different teams" }, { status: 400 });
+  const kickoff = b.kickoff ? new Date(b.kickoff) : new Date();
+  if (Number.isNaN(kickoff.getTime())) return NextResponse.json({ error: "Bad date" }, { status: 400 });
+  const fixture = await (prisma as any).fixture.create({
+    data: { home, away, kickoff }
   });
-  await fs.writeFile(file, JSON.stringify(items, null, 2));
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ fixture });
 }
 
 export async function PUT(req: Request) {
   const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const body = await req.json();
-  const items = (await readFix()).map((f: any) => f.id === body.id ? { ...f, ...body } : f);
-  await fs.writeFile(file, JSON.stringify(items, null, 2));
-  return NextResponse.json({ ok: true });
+  if (!isAdmin(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const b = await req.json();
+  const fixture = await (prisma as any).fixture.update({
+    where: { id: String(b.id) },
+    data: {
+      homeGoals: b.homeGoals === "" || b.homeGoals == null ? null : Number(b.homeGoals),
+      awayGoals: b.awayGoals === "" || b.awayGoals == null ? null : Number(b.awayGoals)
+    }
+  });
+  return NextResponse.json({ fixture });
 }
 
 export async function DELETE(req: Request) {
   const session = await readSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const { id } = await req.json();
-  const items = (await readFix()).filter((f: any) => f.id !== String(id));
-  await fs.writeFile(file, JSON.stringify(items, null, 2));
+  if (!isAdmin(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const b = await req.json();
+  await (prisma as any).fixture.delete({ where: { id: String(b.id) } });
   return NextResponse.json({ ok: true });
 }

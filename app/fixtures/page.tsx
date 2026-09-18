@@ -14,32 +14,39 @@ export default function FixturesPage() {
   const [home, setHome] = useState("PSG");
   const [away, setAway] = useState("Marseille");
   const [kickoff, setKickoff] = useState("");
+  const [msg, setMsg] = useState("");
 
   async function load() {
     const [f, me] = await Promise.all([fetch("/api/fixtures"), fetch("/api/auth/me")]);
     const fix = await readJson(f);
     const auth = await readJson(me);
     setRows(fix.fixtures || []);
-    setIsAdmin(auth.user?.role === "ADMIN" || auth.user?.role === "TEACHER");
+    setIsAdmin(auth.user?.role === "ADMIN" || auth.user?.role === "TEACHER" || auth.user?.email === "coordinator@school.local");
   }
   useEffect(() => { load(); }, []);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/fixtures", {
+    if (home === away) { setMsg("Home and away must be different"); return; }
+    if (!kickoff) { setMsg("Pick a date and time"); return; }
+    const res = await fetch("/api/fixtures", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ home, away, kickoff })
+      body: JSON.stringify({ home, away, kickoff: new Date(kickoff).toISOString() })
     });
-    load();
+    const data = await readJson(res);
+    setMsg(res.ok ? "Fixture added" : (data.error || "Could not add fixture"));
+    if (res.ok) { setKickoff(""); load(); }
   }
 
   async function saveScore(id: string, homeGoals: string, awayGoals: string) {
-    await fetch("/api/fixtures", {
+    const res = await fetch("/api/fixtures", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, homeGoals, awayGoals })
     });
+    const data = await readJson(res);
+    setMsg(res.ok ? "Score saved" : (data.error || "Could not save score"));
     load();
   }
 
@@ -52,6 +59,7 @@ export default function FixturesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-blue-300">Fixtures</h1>
+      {msg && <p className="text-sm text-yellow-300">{msg}</p>}
       <div className="space-y-3">
         {rows.map((f) => (
           <article key={f.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/20 bg-black p-4">
