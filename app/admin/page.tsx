@@ -134,7 +134,7 @@ export default function AdminPage() {
       </section>
 
       <form onSubmit={saveDeadline} className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4">
-        <h2 className="text-lg font-semibold text-blue-300">Deadline</h2>
+        <h2 className="text-lg font-semibold text-blue-300">Deadline</p>
         <input
           type="date"
           value={date}

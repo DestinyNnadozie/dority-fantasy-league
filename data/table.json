@@ -1,42 +1,42 @@
 [
   {
-    "team": "Marseille",
-    "played": 0,
-    "won": 0,
-    "drawn": 0,
-    "lost": 0,
-    "gf": 0,
-    "ga": 0,
-    "pts": 0
-  },
-  {
     "team": "PSG",
-    "played": 0,
+    "played": 1,
     "won": 0,
-    "drawn": 0,
+    "drawn": 1,
     "lost": 0,
-    "gf": 0,
-    "ga": 0,
-    "pts": 0
-  },
-  {
-    "team": "Lyon",
-    "played": 0,
-    "won": 0,
-    "drawn": 0,
-    "lost": 0,
-    "gf": 0,
-    "ga": 0,
-    "pts": 0
+    "gf": 3,
+    "ga": 3,
+    "pts": 1
   },
   {
     "team": "Monaco",
-    "played": 0,
+    "played": 1,
     "won": 0,
+    "drawn": 1,
+    "lost": 0,
+    "gf": 3,
+    "ga": 3,
+    "pts": 1
+  },
+  {
+    "team": "Marseille",
+    "played": 1,
+    "won": 1,
     "drawn": 0,
     "lost": 0,
-    "gf": 0,
-    "ga": 0,
+    "gf": 4,
+    "ga": 2,
+    "pts": 3
+  },
+  {
+    "team": "Lyon",
+    "played": 1,
+    "won": 0,
+    "drawn": 0,
+    "lost": 1,
+    "gf": 2,
+    "ga": 4,
     "pts": 0
   }
 ]
