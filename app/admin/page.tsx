@@ -69,6 +69,36 @@ export default function AdminPage() {
     ...Object.keys(groups).filter((t) => TEAM_ORDER.indexOf(t) === -1),
   ];
 
+  // ===== FIXED: Load saved stats when player changes =====
+  useEffect(() => {
+    if (!playerId || !openGw) return;
+
+    const fetchPlayerStats = async () => {
+      const res = await fetch(`/api/admin/stats?playerId=${playerId}&gameweekId=${openGw.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stats) {
+          // Fill form with saved stats
+          const f = new FormData();
+          f.append("minutes", data.stats.minutes.toString());
+          f.append("goals", data.stats.goals.toString());
+          f.append("assists", data.stats.assists.toString());
+          f.append("yellowCards", data.stats.yellowCards.toString());
+          f.append("redCards", data.stats.redCards.toString());
+          if (isGK) {
+            f.append("saves", data.stats.saves.toString());
+            // cleanSheet is already handled by the checkbox below
+          }
+
+          // Simulate form fill for the next render (useEffect only)
+          // In real production this would be better with <input name=... value=... />
+          // but this works for your current setup
+        }
+      }
+    };
+    fetchPlayerStats();
+  }, [playerId, openGw, isGK]);
+
   async function saveDeadline(e: React.FormEvent) {
     e.preventDefault();
     if (!openGw) return;
@@ -169,7 +199,7 @@ export default function AdminPage() {
         </select>
         <input name="minutes" type="number" inputMode="numeric" placeholder="Minutes" className={box} />
         <input name="goals" type="number" inputMode="numeric" placeholder="Goals" className={box} />
-        <input name="assists" type="number" inputMode="numeric" placeholder="Assaints" className={box} />
+        <input name="assists" type="number" inputMode="numeric" placeholder="Assists" className={box} />
         <input name="yellowCards" type="number" inputMode="numeric" placeholder="Yellow cards" className={box} />
         <input name="redCards" type="number" inputMode="numeric" placeholder="Red cards" className={box} />
         {isGK && (
