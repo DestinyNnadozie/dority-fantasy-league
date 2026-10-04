@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
+import { calculateGameweek } from "@/lib/scoring/calculateGameweek";
 
 function scored(f: { homeGoals: number | null; awayGoals: number | null }) {
   return f.homeGoals !== null && f.awayGoals !== null;
@@ -31,13 +32,14 @@ export async function POST() {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + 7);
 
-  const gw = await prisma.gameweek.create({
+  const gw = await prisma.$transaction(async (tx) => {
+  const created = await tx.gameweek.create({
     data: { id: nextId, name: "Gameweek " + nextId, deadline, status: "OPEN" }
   });
 
-  const picks = await prisma.squadPick.findMany({ where: { gameweekId: last.id } });
+  const picks = await tx.squadPick.findMany({ where: { gameweekId: last.id } });
   if (picks.length) {
-    await prisma.squadPick.createMany({
+    await tx.squadPick.createMany({
       data: picks.map((p) => ({
         teamId: p.teamId,
         playerId: p.playerId,
@@ -51,6 +53,9 @@ export async function POST() {
     });
   }
 
-  await prisma.gameweek.update({ where: { id: last.id }, data: { status: "FINISHED" } });
+  await calculateGameweek(nextId, undefined, tx);
+  await tx.gameweek.update({ where: { id: last.id }, data: { status: "FINISHED" } });
+  return created;
+  }, { timeout: 30000 });
   return NextResponse.json({ gameweek: gw });
 }

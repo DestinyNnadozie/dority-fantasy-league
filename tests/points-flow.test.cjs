@@ -35,6 +35,13 @@ function fixture() {
       findMany: async ({ where, include }) => filter(where).map(s => include ? { ...s, player: players.find(p => p.id === s.playerId) } : s),
       findUnique: async ({ where }) => filter(where.playerId_gameweekId)[0] || null,
       update: async ({ where, data }) => Object.assign(stats.find(s => s.id === where.id), data),
+      upsert: async ({ where, create, update }) => {
+        const existing = filter(where.playerId_gameweekId)[0];
+        if (existing) return Object.assign(existing, update);
+        const added = stat(create.playerId, create.gameweekId, create);
+        stats.push(added);
+        return added;
+      },
       groupBy: async ({ where, take }) => {
         assert.equal(where.player.OR[1].teamName.not, 'Icons');
         const sums = {};
@@ -51,7 +58,7 @@ function fixture() {
       aggregate: async () => ({ _sum: { finalPoints: scores.reduce((sum, s) => sum + s.finalPoints, 0) } })
     },
     squadPick: { groupBy: async () => [] },
-    schoolPlayer: { findMany: async () => players }
+    schoolPlayer: { findMany: async ({ where }) => where?.teamName ? players.filter(p => p.teamName.toLowerCase() === 'icons') : players }
   };
   db.$transaction = async callback => callback(db);
   return { db, stats, scores, team };
@@ -82,7 +89,7 @@ test('calculation persists screenshot stats, updates captain/team totals and is 
   assert.equal(squad.body.team.picks[3].player.gwPoints, 0);
   const publicTeam = await load('app/api/team/[id]/route.ts', mocks(db)).GET({}, { params: Promise.resolve({ id: 'team' }) });
   assert.equal(publicTeam.body.team.picks[0].player.gwPoints, 78);
-  assert.equal(publicTeam.body.team.picks[2].player.gwPoints, 200);
+  assert.equal(publicTeam.body.team.picks[2].player.gwPoints, 20);
   assert.equal(publicTeam.body.team.picks[3].player.gwPoints, 0);
   assert.equal(publicTeam.body.team.gameweekName, 'Gameweek 1');
   assert.equal(publicTeam.body.team.overallPoints, 167);
@@ -111,4 +118,18 @@ test('saved stats load for editing, and missing stats return null', async () => 
   const route = load('app/api/admin/stats/route.ts', mocks(db));
   assert.equal((await route.GET({ url: 'http://localhost/?playerId=noble&gameweekId=1' })).body.stats.goals, 9);
   assert.equal((await route.GET({ url: 'http://localhost/?playerId=missing&gameweekId=1' })).body.stats, null);
+});
+
+test('Icons get a fixed 20 every week, even without minutes; captain doubles and recalculation never accumulates', async () => {
+  const { db, stats, team, scores } = fixture();
+  team.picks.forEach(p => { p.isCaptain = p.playerId === 'icon'; if (p.isCaptain) p.slot = 'STARTING'; });
+  stats.find(s => s.playerId === 'icon').minutes = 0;
+  const scoring = load('lib/scoring/calculateGameweek.ts', { ...mocks(db), './rules': rules });
+  for (let i = 0; i < 2; i++) {
+    await scoring.calculateGameweek(1, 'icon');
+    assert.equal(stats.find(s => s.playerId === 'icon').rawPoints, 20);
+    assert.equal(scores[0].finalPoints, 41);
+  }
+  await scoring.calculateGameweek(2, 'icon');
+  assert.equal(stats.find(s => s.playerId === 'icon' && s.gameweekId === 2).rawPoints, 20);
 });

@@ -1,12 +1,22 @@
 import { prisma } from "@/lib/db";
 import { calculatePlayerPoints } from "./rules";
+import type { Prisma } from "@prisma/client";
 
-export async function calculateGameweek(gameweekId: number, playerId?: string) {
+export async function calculateGameweek(gameweekId: number, playerId?: string, transaction?: Prisma.TransactionClient) {
   // Commit player points and team totals together; recalculating replaces scores.
-  return prisma.$transaction(async (tx) => {
+  const calculate = async (tx: Prisma.TransactionClient) => {
+    const icons = await tx.schoolPlayer.findMany({ where: { teamName: { equals: "Icons", mode: "insensitive" } }, select: { id: true } });
+    const iconIds = new Set(icons.map((icon) => icon.id));
+    for (const icon of icons) {
+      await tx.playerGameweekStat.upsert({
+        where: { playerId_gameweekId: { playerId: icon.id, gameweekId } },
+        create: { playerId: icon.id, gameweekId, rawPoints: 20 },
+        update: { rawPoints: 20 }
+      });
+    }
     const stats = await tx.playerGameweekStat.findMany({ where: { gameweekId, playerId }, include: { player: true } });
     for (const row of stats) {
-      const rawPoints = calculatePlayerPoints({ ...row, position: row.player.position });
+      const rawPoints = iconIds.has(row.playerId) ? 20 : calculatePlayerPoints({ ...row, position: row.player.position });
       await tx.playerGameweekStat.update({ where: { id: row.id }, data: { rawPoints } });
     }
     const refreshed = await tx.playerGameweekStat.findMany({ where: { gameweekId } });
@@ -17,7 +27,7 @@ export async function calculateGameweek(gameweekId: number, playerId?: string) {
       const starting = team.picks.filter((p) => p.slot === "STARTING");
       const captain = starting.find((p) => p.isCaptain);
       let points = starting.reduce((s, p) => s + (pointsByPlayer[p.playerId] || 0), 0);
-      if (captain && (minutesByPlayer[captain.playerId] || 0) > 0) points += pointsByPlayer[captain.playerId] || 0;
+      if (captain && (iconIds.has(captain.playerId) || (minutesByPlayer[captain.playerId] || 0) > 0)) points += pointsByPlayer[captain.playerId] || 0;
       const transferHits = team.gameweekScores[0]?.transferHits ?? 0;
       const finalPoints = points - transferHits;
       await tx.teamGameweekScore.upsert({
@@ -29,5 +39,6 @@ export async function calculateGameweek(gameweekId: number, playerId?: string) {
       await tx.team.update({ where: { id: team.id }, data: { overallPoints: season._sum.finalPoints || 0 } });
     }
     return { playersCalculated: stats.length, teamsUpdated: teams.length };
-  }, { timeout: 30000 });
+  };
+  return transaction ? calculate(transaction) : prisma.$transaction(calculate, { timeout: 30000 });
 }
