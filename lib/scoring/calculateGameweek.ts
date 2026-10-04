@@ -5,7 +5,10 @@ import type { Prisma } from "@prisma/client";
 export async function calculateGameweek(gameweekId: number, playerId?: string, transaction?: Prisma.TransactionClient) {
   // Commit player points and team totals together; recalculating replaces scores.
   const calculate = async (tx: Prisma.TransactionClient) => {
-    const icons = await tx.schoolPlayer.findMany({ where: { teamName: { equals: "Icons", mode: "insensitive" } }, select: { id: true } });
+    const icons = await tx.schoolPlayer.findMany({ where: {
+      teamName: { equals: "Icons", mode: "insensitive" },
+      OR: [{ status: { not: "retired" } }, { stats: { some: { gameweekId } } }, { picks: { some: { gameweekId } } }]
+    }, select: { id: true } });
     const iconIds = new Set(icons.map((icon) => icon.id));
     for (const icon of icons) {
       await tx.playerGameweekStat.upsert({

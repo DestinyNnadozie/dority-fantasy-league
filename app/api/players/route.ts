@@ -4,7 +4,7 @@ import { getCurrentGameweek } from "@/lib/gameweek";
 
 export async function GET() {
   const gw = await getCurrentGameweek();
-  const players = await prisma.schoolPlayer.findMany({ orderBy: [{ position: "asc" }, { price: "desc" }] });
+  const players = await prisma.schoolPlayer.findMany({ where: { status: { not: "retired" } }, orderBy: [{ position: "asc" }, { price: "desc" }] });
   const stats = gw
     ? await prisma.playerGameweekStat.findMany({ where: { gameweekId: gw.id } })
     : [];

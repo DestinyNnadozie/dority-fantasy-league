@@ -57,6 +57,12 @@ export async function PUT(req: Request) {
       where: { id: { in: unique.map((p) => p.playerId) } }
     });
     const byId = Object.fromEntries(players.map((p) => [p.id, p]));
+    if (players.length !== unique.length) throw new Error("One or more players no longer exist");
+    const existing = await prisma.squadPick.findMany({ where: { teamId: team.id, gameweekId: gw.id }, select: { playerId: true } });
+    const existingIds = new Set(existing.map((p) => p.playerId));
+    if (players.some((p) => p.status === "retired" && !existingIds.has(p.id))) {
+      throw new Error("A removed player cannot be added to a squad");
+    }
     const spent = unique.reduce((s, p) => s + (byId[p.playerId]?.price ?? 9999), 0);
     if (spent > 3000) throw new Error("Over budget");
     const clubCount: Record<string, number> = {};

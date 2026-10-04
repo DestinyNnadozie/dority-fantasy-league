@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
 import { calculateGameweek } from "@/lib/scoring/calculateGameweek";
+import { planReplacements } from "@/lib/squad/replacements";
+
+class ReplacementError extends Error {}
 
 function scored(f: { homeGoals: number | null; awayGoals: number | null }) {
   return f.homeGoals !== null && f.awayGoals !== null;
@@ -32,15 +35,34 @@ export async function POST() {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + 7);
 
-  const gw = await prisma.$transaction(async (tx) => {
+  try {
+  const result = await prisma.$transaction(async (tx) => {
   const created = await tx.gameweek.create({
     data: { id: nextId, name: "Gameweek " + nextId, deadline, status: "OPEN" }
   });
 
-  const picks = await tx.squadPick.findMany({ where: { gameweekId: last.id } });
+  const picks = await tx.squadPick.findMany({ where: { gameweekId: last.id }, orderBy: { squadOrder: "asc" } });
+  const players = await tx.schoolPlayer.findMany();
+  const teamIds = [...new Set(picks.map((p) => p.teamId))];
+  const nextPicks: typeof picks = [];
+  let replacementCount = 0;
+  for (const teamId of teamIds) {
+    const teamPicks = picks.filter((p) => p.teamId === teamId);
+    const plan = planReplacements(teamPicks, players);
+    if (!plan) {
+      const team = await tx.team.findUnique({ where: { id: teamId }, select: { name: true } });
+      throw new ReplacementError(`No eligible replacement combination for ${team?.name || "a team"}. Add available players of the needed positions or adjust prices before creating the next gameweek. No changes were saved.`);
+    }
+    nextPicks.push(...plan.picks);
+    if (plan.replacements.length) {
+      await tx.team.update({ where: { id: teamId }, data: { bank: plan.bank } });
+      await tx.transfer.createMany({ data: plan.replacements.map((r) => ({ ...r, teamId, gameweekId: nextId, cost: 0 })) });
+      replacementCount += plan.replacements.length;
+    }
+  }
   if (picks.length) {
     await tx.squadPick.createMany({
-      data: picks.map((p) => ({
+      data: nextPicks.map((p) => ({
         teamId: p.teamId,
         playerId: p.playerId,
         gameweekId: nextId,
@@ -55,7 +77,12 @@ export async function POST() {
 
   await calculateGameweek(nextId, undefined, tx);
   await tx.gameweek.update({ where: { id: last.id }, data: { status: "FINISHED" } });
-  return created;
+  return { gameweek: created, replacementCount };
   }, { timeout: 30000 });
-  return NextResponse.json({ gameweek: gw });
+  return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof ReplacementError) return NextResponse.json({ error: error.message }, { status: 409 });
+    console.error("Could not create next gameweek", error);
+    return NextResponse.json({ error: "Could not create the next gameweek. Please try again." }, { status: 500 });
+  }
 }

@@ -1,0 +1,46 @@
+import type { SchoolPlayer, SquadPick } from "@prisma/client";
+
+// Plan on copies: historical picks and their points must never change.
+export function planReplacements(picks: SquadPick[], players: SchoolPlayer[]) {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const next = picks.map((p) => ({ ...p }));
+  const departing = next.filter((p) => byId.get(p.playerId)?.status === "retired");
+  const retained = next.filter((p) => byId.get(p.playerId)?.status !== "retired");
+  const used = new Set(retained.map((p) => p.playerId));
+  const clubs = new Map<string, number>();
+  let spent = 0;
+  for (const pick of retained) {
+    const player = byId.get(pick.playerId);
+    if (!player) return null;
+    spent += player.price;
+    const club = player.teamName || "Unknown";
+    clubs.set(club, (clubs.get(club) || 0) + 1);
+  }
+  const isIcon = (p: SchoolPlayer) => p.teamName?.toLowerCase() === "icons";
+  const options = departing.map((pick) => {
+    const old = byId.get(pick.playerId)!;
+    return players.filter((p) => p.status === "available" && p.position === old.position && isIcon(p) === isIcon(old))
+      .sort((a, b) => Math.abs(a.price - old.price) - Math.abs(b.price - old.price) || a.price - b.price || a.id.localeCompare(b.id));
+  });
+  // Backtrack so multiple departing players don't consume each other's only option.
+  function choose(index: number): boolean {
+    if (index === departing.length) return spent <= 3000 && [...clubs.values()].every((n) => n <= 4);
+    const pick = departing[index];
+    const oldId = pick.playerId;
+    const oldPrice = pick.purchasePrice;
+    for (const candidate of options[index]) {
+      const club = candidate.teamName || "Unknown";
+      const count = clubs.get(club) || 0;
+      if (used.has(candidate.id) || count >= 4 || spent + candidate.price > 3000) continue;
+      used.add(candidate.id); clubs.set(club, count + 1); spent += candidate.price;
+      pick.playerId = candidate.id; pick.purchasePrice = candidate.price;
+      if (choose(index + 1)) return true;
+      used.delete(candidate.id); clubs.set(club, count); spent -= candidate.price;
+      pick.playerId = oldId; pick.purchasePrice = oldPrice;
+    }
+    return false;
+  }
+  if (departing.length && !choose(0)) return null;
+  const replacements = next.flatMap((p, i) => p.playerId === picks[i].playerId ? [] : [{ playerOutId: picks[i].playerId, playerInId: p.playerId }]);
+  return { picks: next, replacements, bank: 3000 - spent };
+}

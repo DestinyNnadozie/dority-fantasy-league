@@ -8,6 +8,7 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, { price: string; teamName: string; position: string }>>({});
 
   useEffect(() => {
@@ -40,6 +41,21 @@ export default function AdminPlayersPage() {
   }
 
   const groups: Record<string, any[]> = {};
+  async function deletePlayer(player: any) {
+    const name = `${player.firstName} ${player.lastName}`;
+    if (!window.confirm(`Delete ${name} from the active player list?\n\nTheir past squads and points will be preserved. They will be replaced automatically next gameweek by an eligible player of the same position, within budget and club limits.`)) return;
+    setDeletingId(player.id);
+    try {
+      const res = await fetch("/api/admin/players", {
+        method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: player.id })
+      });
+      const data = await res.json();
+      if (!res.ok) { setMsg(data.error || "Could not remove player"); return; }
+      setPlayers((current) => current.filter((p) => p.id !== player.id));
+      setMsg(`${name} removed. Past points preserved; automatic replacement starts next gameweek.`);
+    } catch { setMsg("Could not remove player. Please try again."); }
+    finally { setDeletingId(null); }
+  }
   for (const p of players) {
     const g = p.teamName || "Icons";
     if (!groups[g]) groups[g] = [];
@@ -118,7 +134,10 @@ export default function AdminPlayersPage() {
                     >
                       {POS.map((t) => <option key={t}>{t}</option>)}
                     </select>
-                    <button className="rounded bg-blue-600 px-3 py-1 text-black" onClick={() => saveRow(p.id)}>Save</button>
+                    <button disabled={deletingId === p.id} className="rounded bg-blue-600 px-3 py-1 text-black" onClick={() => saveRow(p.id)}>Save</button>
+                    <button type="button" disabled={deletingId !== null} onClick={() => deletePlayer(p)} aria-label={`Delete player ${p.firstName} ${p.lastName}`} className="min-h-12 rounded-lg border border-red-400/50 bg-red-950 px-3 py-2 font-semibold text-red-200 hover:bg-red-900 disabled:opacity-50">
+                      {deletingId === p.id ? "Removing…" : "Delete player"}
+                    </button>
                   </li>
                 );
               })}

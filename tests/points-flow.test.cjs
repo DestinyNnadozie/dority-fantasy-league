@@ -3,8 +3,8 @@ const { test } = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const repo = path.resolve(__dirname, '..');
-const stage = path.join(__dirname, 'points-fix');
+const repo = process.env.TEST_PROJECT || path.resolve(__dirname, '..');
+const stage = process.env.TEST_SOURCE_ROOT || path.join(__dirname, 'points-fix');
 const ts = require(path.join(repo, 'node_modules/typescript'));
 function load(file, mocks = {}) {
   const staged = path.join(stage, file);
@@ -58,10 +58,15 @@ function fixture() {
       aggregate: async () => ({ _sum: { finalPoints: scores.reduce((sum, s) => sum + s.finalPoints, 0) } })
     },
     squadPick: { groupBy: async () => [] },
-    schoolPlayer: { findMany: async ({ where }) => where?.teamName ? players.filter(p => p.teamName.toLowerCase() === 'icons') : players }
+    schoolPlayer: { findMany: async ({ where }) => where?.teamName ? players.filter(p => {
+      if (p.teamName.toLowerCase() !== 'icons') return false;
+      if (!where.OR || p.status !== 'retired') return true;
+      const gw = where.OR[1].stats.some.gameweekId;
+      return stats.some(s => s.playerId === p.id && s.gameweekId === gw) || (gw === 1 && picks.some(pick => pick.playerId === p.id));
+    }) : players }
   };
   db.$transaction = async callback => callback(db);
-  return { db, stats, scores, team };
+  return { db, stats, scores, team, players };
 }
 function mocks(db, session = { id: 'user', role: 'ADMIN' }) {
   return { '@/lib/db': { prisma: db }, '@/lib/auth/session': { readSession: async () => session }, '@/lib/gameweek': { getCurrentGameweek: async () => ({ id: 1, name: 'Gameweek 1' }) }, 'next/server': response };
@@ -132,4 +137,14 @@ test('Icons get a fixed 20 every week, even without minutes; captain doubles and
   }
   await scoring.calculateGameweek(2, 'icon');
   assert.equal(stats.find(s => s.playerId === 'icon' && s.gameweekId === 2).rawPoints, 20);
+});
+
+test('retired Icons keep historical points but receive no award in future weeks without picks', async () => {
+  const { db, stats, players } = fixture();
+  players.find(p => p.id === 'icon').status = 'retired';
+  const scoring = load('lib/scoring/calculateGameweek.ts', { ...mocks(db), './rules': rules });
+  await scoring.calculateGameweek(1, 'icon');
+  assert.equal(stats.find(s => s.playerId === 'icon' && s.gameweekId === 1).rawPoints, 20);
+  await scoring.calculateGameweek(2, 'icon');
+  assert.equal(stats.some(s => s.playerId === 'icon' && s.gameweekId === 2), false);
 });
