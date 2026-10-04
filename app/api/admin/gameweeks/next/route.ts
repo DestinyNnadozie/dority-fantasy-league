@@ -1,22 +1,9 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
 
-const file = path.join(process.cwd(), "data", "fixtures.json");
-
-async function fixturesFor(gwId: number) {
-  try {
-    const all = JSON.parse(await fs.readFile(file, "utf8"));
-    return all.filter((f: any) => Number(f.gameweekId || 1) === gwId);
-  } catch {
-    return [];
-  }
-}
-
-function scored(f: any) {
-  return f.homeGoals !== "" && f.homeGoals != null && f.awayGoals !== "" && f.awayGoals != null;
+function scored(f: { homeGoals: number | null; awayGoals: number | null }) {
+  return f.homeGoals !== null && f.awayGoals !== null;
 }
 
 export async function POST() {
@@ -28,11 +15,12 @@ export async function POST() {
   const last = await prisma.gameweek.findFirst({ orderBy: { id: "desc" } });
   if (!last) return NextResponse.json({ error: "No gameweek exists" }, { status: 400 });
 
-  const fixtures = await fixturesFor(last.id);
+  // Use the same database records that Save score writes to /api/fixtures.
+  const fixtures = await prisma.fixture.findMany({ where: { gameweekId: last.id } });
   if (fixtures.length === 0) {
     return NextResponse.json({ error: "Add and confirm all " + last.name + " fixture scores first" }, { status: 400 });
   }
-  const missing = fixtures.filter((f: any) => !scored(f));
+  const missing = fixtures.filter((f) => !scored(f));
   if (missing.length) {
     return NextResponse.json({
       error: "Confirm scores for all " + last.name + " fixtures first (" + missing.length + " still open)"
