@@ -80,6 +80,12 @@ test('calculation persists screenshot stats, updates captain/team totals and is 
   const squad = await load('app/api/team/picks/route.ts', mocks(db)).GET();
   assert.equal(squad.body.team.picks[0].player.gwPoints, 78);
   assert.equal(squad.body.team.picks[3].player.gwPoints, 0);
+  const publicTeam = await load('app/api/team/[id]/route.ts', mocks(db)).GET({}, { params: Promise.resolve({ id: 'team' }) });
+  assert.equal(publicTeam.body.team.picks[0].player.gwPoints, 78);
+  assert.equal(publicTeam.body.team.picks[2].player.gwPoints, 200);
+  assert.equal(publicTeam.body.team.picks[3].player.gwPoints, 0);
+  assert.equal(publicTeam.body.team.gameweekName, 'Gameweek 1');
+  assert.equal(publicTeam.body.team.overallPoints, 167);
   const total = await load('app/api/team/score/route.ts', mocks(db)).GET();
   assert.equal(total.body.gameweekPoints, 157);
   assert.equal(total.body.overall, 167);

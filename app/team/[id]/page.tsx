@@ -40,7 +40,8 @@ export default function ViewTeamPage() {
     <section>
       <p className="text-xs uppercase text-blue-400">Read only</p>
       <h1 className="text-3xl font-black text-white">{team.name}</h1>
-      <p className="mb-4 text-sm text-blue-300">{team.owner} · {team.overallPoints || 0} pts</p>
+      <p className="mb-2 text-sm text-blue-300">{team.owner} · {team.overallPoints || 0} overall pts</p>
+      <p className="mb-4 text-sm text-yellow-300">Player points: {team.gameweekName || "current gameweek"} · Captain points doubled</p>
       <div className="relative min-h-[620px] overflow-hidden rounded-2xl border-4 border-white/80 bg-[#15803d] p-6">
         <Markings />
         <div className="relative z-10 flex min-h-[572px] flex-col justify-between py-2">
@@ -75,6 +76,7 @@ export default function ViewTeamPage() {
           return (
             <div key={i} className={"relative h-16 rounded-xl text-center text-[11px] leading-[4rem] ring-1 " + (isIcon(pl) ? "bg-gradient-to-b from-yellow-600 via-black to-black ring-yellow-500" : "bg-blue-950 ring-blue-500/30")}>
               {pick ? pick.player.position + " " + pick.player.lastName : "BENCH"}
+              {pl && <span className="absolute right-1 top-1 rounded bg-black/70 px-1 text-[10px] font-bold leading-normal text-yellow-300">{pl.gwPoints ?? 0} pts</span>}
             </div>
           );
         })}
