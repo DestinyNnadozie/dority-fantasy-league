@@ -19,7 +19,17 @@ export async function GET() {
       }
     }
   });
-  return NextResponse.json({ team, gameweek: gw });
+  const stats = team && gw ? await prisma.playerGameweekStat.findMany({
+    where: { gameweekId: gw.id, playerId: { in: team.picks.map((p) => p.playerId) } },
+    select: { playerId: true, rawPoints: true }
+  }) : [];
+  const points = Object.fromEntries(stats.map((s) => [s.playerId, s.rawPoints]));
+  return NextResponse.json({
+    team: team ? { ...team, picks: team.picks.map((pick) => ({
+      ...pick, player: { ...pick.player, gwPoints: points[pick.playerId] ?? 0 }
+    })) } : null,
+    gameweek: gw
+  });
 }
 
 export async function PUT(req: Request) {

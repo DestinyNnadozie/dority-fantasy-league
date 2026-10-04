@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { RenameTeam } from "@/components/squad/RenameTeam";
+import { PointsBar } from "@/components/squad/PointsBar";
 
 type Pos = "GK"|"DEF"|"MID"|"FWD";
 type P = { id: string; firstName: string; lastName: string; position: Pos; price: number; teamName: string | null; gwPoints?: number };
@@ -216,6 +217,7 @@ export default function SquadPage() {
     <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
       <section>
         <h1 className="mb-3 text-3xl font-extrabold text-white">{teamName}</h1>
+        <PointsBar />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className={box}>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Team name</p>

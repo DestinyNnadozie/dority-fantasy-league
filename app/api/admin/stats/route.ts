@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/auth/session";
+export async function GET(req: Request) {
+  const session = await readSession();
+  if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const params = new URL(req.url).searchParams;
+  const playerId = params.get("playerId");
+  const gameweekId = Number(params.get("gameweekId"));
+  if (!playerId || !Number.isSafeInteger(gameweekId) || gameweekId < 1) {
+    return NextResponse.json({ error: "Invalid player or gameweek" }, { status: 400 });
+  }
+  const stats = await prisma.playerGameweekStat.findUnique({
+    where: { playerId_gameweekId: { playerId, gameweekId } }
+  });
+  return NextResponse.json({ stats });
+}
 export async function PUT(req: Request) {
   const session = await readSession();
   if (!session || (session.role !== "ADMIN" && session.role !== "TEACHER")) {
