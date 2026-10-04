@@ -17,6 +17,23 @@ export async function POST(req: Request) {
   if (!isCoord(session)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const b = await req.json();
   const kind = String(b.kind);
+  if (kind === "POTM") {
+    const fixture = await prisma.fixture.findUnique({ where: { id: String(b.fixtureKey || "") } });
+    const player = await prisma.schoolPlayer.findUnique({ where: { id: String(b.playerId || "") } });
+    if (!fixture || !player) return NextResponse.json({ error: "Choose a saved fixture and player" }, { status: 400 });
+    if (player.teamName !== fixture.homeTeam && player.teamName !== fixture.awayTeam) {
+      return NextResponse.json({ error: "Choose a player from one of the fixture's teams" }, { status: 400 });
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.award.deleteMany({ where: { kind, fixtureKey: fixture.id } });
+      await tx.award.create({ data: {
+        kind, fixtureKey: fixture.id,
+        label: `GW${fixture.gameweekId}: ${fixture.homeTeam} vs ${fixture.awayTeam}`,
+        playerName: `${player.firstName} ${player.lastName}`, teamName: player.teamName || ""
+      } });
+    });
+    return NextResponse.json({ ok: true });
+  }
   const db = prisma as any;
   if (kind === "TOTW" || kind === "TOTS") {
     await db.award.deleteMany({ where: { kind } });

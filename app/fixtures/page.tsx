@@ -59,6 +59,7 @@ export default function FixturesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-blue-300">Fixtures</h1>
+      {isAdmin && <a href="/awards#player-of-match" className="inline-flex min-h-12 items-center rounded-lg bg-yellow-300 px-4 font-semibold text-black">Choose player of the match</a>}
       {msg && <p className="text-sm text-yellow-300">{msg}</p>}
       <div className="space-y-3">
         {rows.map((f) => (

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 type P = { id: string; firstName: string; lastName: string; position: string; teamName: string | null };
 type A = { id: string; kind: string; playerName: string; teamName: string; fixtureKey: string; label: string };
+type Fixture = { id: string; home: string; away: string; gameweekId: number; kickoff: string };
 type Pos = "GK"|"DEF"|"MID"|"FWD";
 const FORMATION: Pos[][] = [["GK"],["DEF","DEF","DEF"],["MID","MID","MID"],["FWD","FWD"]];
 
@@ -32,11 +33,16 @@ export default function AwardsPage() {
   const [potw, setPotw] = useState<P | null>(null);
   const [pots, setPots] = useState<P | null>(null);
   const [msg, setMsg] = useState("");
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [fixtureId, setFixtureId] = useState("");
+  const [matchPlayerId, setMatchPlayerId] = useState("");
+  const [savingMatch, setSavingMatch] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setAdmin(Boolean(d.user && (d.user.role === "ADMIN" || d.user.role === "TEACHER" || d.user.email === "coordinator@school.local"))));
     fetch("/api/awards").then((r) => r.json()).then((d) => setAwards(d.awards || []));
     fetch("/api/players").then((r) => r.json()).then((d) => setPlayers(d.players || []));
+    fetch("/api/fixtures").then((r) => r.json()).then((d) => setFixtures(d.fixtures || []));
   }, []);
 
   const listed = players.filter((p) => (p.firstName + " " + p.lastName).toLowerCase().includes(q.toLowerCase()));
@@ -78,9 +84,18 @@ export default function AwardsPage() {
     );
   }
 
-  const potwA = awards.find((a) => a.kind === "POTW");
-  const potsA = awards.find((a) => a.kind === "POTS");
-  const potm = awards.filter((a) => a.kind === "POTM");
+  const chosen = awards.filter((a) => a.playerName.trim());
+  const potwA = chosen.find((a) => a.kind === "POTW");
+  const potsA = chosen.find((a) => a.kind === "POTS");
+  const potm = chosen.filter((a) => a.kind === "POTM");
+  const selectedFixture = fixtures.find((f) => f.id === fixtureId);
+  const matchPlayers = selectedFixture ? players.filter((p) => p.teamName === selectedFixture.home || p.teamName === selectedFixture.away) : [];
+  async function saveMatch() {
+    setSavingMatch(true);
+    try { await save({ kind: "POTM", fixtureKey: fixtureId, playerId: matchPlayerId }); }
+    catch { setMsg("Could not save player of the match. Please retry."); }
+    finally { setSavingMatch(false); }
+  }
 
   return (
     <section className="space-y-4">
@@ -88,7 +103,8 @@ export default function AwardsPage() {
       {admin && <p className="text-sm text-yellow-300">Coordinator mode: tap a pitch slot or award, then tap a player, then Save that section.</p>}
       {msg && <p className="text-sm text-yellow-300">{msg}</p>}
 
-      <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
+      {!admin && !chosen.length && <p className="text-blue-300">No awards announced yet.</p>}
+      {(admin || potwA) && <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="mb-2 text-yellow-300">Player of the week</h2>
         <p className="text-white">{potw ? potw.firstName + " " + potw.lastName : (potwA?.playerName || "Not chosen")}</p>
         {admin && (
@@ -97,9 +113,9 @@ export default function AwardsPage() {
             <button onClick={() => potw && save({ kind: "POTW", playerName: potw.firstName + " " + potw.lastName, teamName: potw.teamName, label: "" })} className="mt-2 rounded bg-blue-600 px-4 py-2 text-black">Save player of the week</button>
           </>
         )}
-      </div>
+      </div>}
 
-      <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
+      {(admin || potsA) && <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="mb-2 text-yellow-300">Player of the season</h2>
         <p className="text-white">{pots ? pots.firstName + " " + pots.lastName : (potsA?.playerName || "Not chosen")}</p>
         {admin && (
@@ -108,13 +124,29 @@ export default function AwardsPage() {
             <button onClick={() => pots && save({ kind: "POTS", playerName: pots.firstName + " " + pots.lastName, teamName: pots.teamName, label: "" })} className="mt-2 rounded bg-blue-600 px-4 py-2 text-black">Save player of the season</button>
           </>
         )}
-      </div>
+      </div>}
 
-      <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
+      {(admin || potm.length > 0) && <div id="player-of-match" className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="mb-2 text-yellow-300">Player of the match</h2>
-        {potm.map((a) => <p key={a.id}>{a.fixtureKey}: {a.playerName}</p>)}
+        {potm.map((a) => <p key={a.id}>{a.label || a.fixtureKey}: {a.playerName}</p>)}
         {!potm.length && <p className="text-sm text-blue-400">Not chosen</p>}
-      </div>
+        {admin && <div className="mt-3 space-y-3">
+          <label className="block text-sm text-blue-300">Fixture
+            <select value={fixtureId} onChange={(e) => { setFixtureId(e.target.value); setMatchPlayerId(""); }} className="mt-1 min-h-12 w-full rounded-lg bg-white p-3 text-black">
+              <option value="">Choose a fixture</option>
+              {fixtures.map((f) => <option key={f.id} value={f.id}>GW{f.gameweekId}: {f.home} vs {f.away} · {new Date(f.kickoff).toLocaleDateString()}</option>)}
+            </select>
+          </label>
+          {!fixtures.length && <p className="text-sm text-blue-300">Add a fixture on the Fixtures page first.</p>}
+          <label className="block text-sm text-blue-300">Player
+            <select value={matchPlayerId} onChange={(e) => setMatchPlayerId(e.target.value)} disabled={!selectedFixture} className="mt-1 min-h-12 w-full rounded-lg bg-white p-3 text-black disabled:opacity-50">
+              <option value="">Choose player of the match</option>
+              {matchPlayers.map((p) => <option key={p.id} value={p.id}>{p.firstName} {p.lastName} · {p.teamName}</option>)}
+            </select>
+          </label>
+          <button type="button" disabled={!fixtureId || !matchPlayerId || savingMatch} onClick={saveMatch} className="min-h-12 rounded-lg bg-yellow-300 px-4 py-2 font-semibold text-black disabled:opacity-50">{savingMatch ? "Saving…" : "Save player of the match"}</button>
+        </div>}
+      </div>}
 
       {admin && (
         <div className="rounded-2xl bg-black p-4">
@@ -134,17 +166,17 @@ export default function AwardsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
+      {(admin || chosen.some((a) => a.kind === "TOTW")) && <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="mb-3 text-yellow-300">Team of the week</h2>
         <Pitch board="TOTW" names={awards.filter((a) => a.kind === "TOTW").map((a) => a.playerName)} />
         {admin && <button onClick={() => save({ kind: "TOTW", players: Object.values(totw).map((p) => p.position + " " + p.lastName).join("\n") })} className="mt-3 rounded bg-yellow-300 px-4 py-2 text-black">Save TOTW</button>}
-      </div>
+      </div>}
 
-      <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
+      {(admin || chosen.some((a) => a.kind === "TOTS")) && <div className="rounded-2xl border border-blue-500/20 bg-black p-4">
         <h2 className="mb-3 text-yellow-300">Team of the season</h2>
         <Pitch board="TOTS" names={awards.filter((a) => a.kind === "TOTS").map((a) => a.playerName)} />
         {admin && <button onClick={() => save({ kind: "TOTS", players: Object.values(tots).map((p) => p.position + " " + p.lastName).join("\n") })} className="mt-3 rounded bg-yellow-300 px-4 py-2 text-black">Save TOTS</button>}
-      </div>
+      </div>}
     </section>
   );
 }
