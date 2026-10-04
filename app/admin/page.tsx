@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Player = {
   id: string;
@@ -31,6 +31,12 @@ export default function AdminPage() {
   const [msg, setMsg] = useState("");
   const [gwId, setGwId] = useState<number>(1);
   const [calculating, setCalculating] = useState(false);
+  const statsForm = useRef<HTMLFormElement>(null);
+  const [loadedStatsKey, setLoadedStatsKey] = useState("");
+  const [statsError, setStatsError] = useState("");
+  const [statsRetry, setStatsRetry] = useState(0);
+  const statsKey = `${playerId}:${gwId}`;
+  const statsReady = loadedStatsKey === statsKey;
 
   async function load() {
     const me = await (await fetch("/api/auth/me")).json();
@@ -118,85 +124,35 @@ export default function AdminPage() {
     ),
   ];
 
-  // Fresh form + current player data when dropdown changes
+  // The keyed form clears immediately; only this player's response may fill it.
   useEffect(() => {
     if (!playerId || !gwId) return;
     let cancelled = false;
+    setLoadedStatsKey("");
+    setStatsError("");
 
     const fetchPlayerStats = async () => {
       const res = await fetch(
-        `/api/admin/stats?playerId=${playerId}&gameweekId=${gwId}`
+        `/api/admin/stats?playerId=${encodeURIComponent(playerId)}&gameweekId=${gwId}`
       );
-
-      if (res.ok) {
-        const data = await res.json();
-        if (cancelled) return;
-        data.stats = data.stats || {};
-
-        if (data.stats) {
-          // Fill form with real stats
-          const fields: {
-            name: string;
-            value: number;
-          }[] = [
-            {
-              name: "minutes",
-              value: data.stats.minutes || 0,
-            },
-            {
-              name: "goals",
-              value: data.stats.goals || 0,
-            },
-            {
-              name: "assists",
-              value: data.stats.assists || 0,
-            },
-            {
-              name: "yellowCards",
-              value: data.stats.yellowCards || 0,
-            },
-            {
-              name: "redCards",
-              value: data.stats.redCards || 0,
-            },
-          ];
-
-          if (isGK) {
-            fields.push({
-              name: "saves",
-              value: data.stats.saves || 0,
-            });
-          }
-
-          // Set values FIRST
-          fields.forEach(({ name, value }) => {
-            const input = document.querySelector(
-              `input[name="${name}"]`
-            ) as HTMLInputElement | null;
-
-            if (input) {
-              input.value = String(value);
-            }
-          });
-
-          // Checkbox
-          const csInput = document.querySelector(
-            'input[name="cs"]'
-          ) as HTMLInputElement | null;
-
-          if (csInput) {
-            csInput.checked = Boolean(data.stats.cleanSheet);
-          }
-
-        }
+      if (!res.ok) throw new Error("Could not load saved stats");
+      const data = await res.json();
+      if (cancelled || !statsForm.current) return;
+      const stats = data.stats || {};
+      for (const name of ["minutes", "goals", "assists", "yellowCards", "redCards", "saves"]) {
+        const input = statsForm.current.elements.namedItem(name) as HTMLInputElement | null;
+        if (input) input.value = String(stats[name] ?? 0);
       }
+      const checkbox = statsForm.current.elements.namedItem("cs") as HTMLInputElement | null;
+      if (checkbox) checkbox.checked = Boolean(stats.cleanSheet);
+      setLoadedStatsKey(statsKey);
     };
 
     fetchPlayerStats().catch(() => {
-      if (!cancelled) setMsg("Could not load saved stats. Please try again.");
+      if (!cancelled) setStatsError("Could not load this player's saved stats. Please retry.");
     });
     return () => { cancelled = true; };
-  }, [playerId, gwId, isGK, selected]);
+  }, [playerId, gwId, statsKey, statsRetry]);
 
   async function saveDeadline(e: React.FormEvent) {
     e.preventDefault();
@@ -239,6 +195,7 @@ export default function AdminPage() {
 
   async function saveStats(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!statsReady) return;
 
     const f = new FormData(e.currentTarget);
 
@@ -266,7 +223,7 @@ export default function AdminPage() {
   }
 
   async function calculatePlayer() {
-    if (!playerId || !gwId || calculating) return;
+    if (!playerId || !gwId || calculating || !statsReady) return;
     setCalculating(true);
     setMsg("");
     try {
@@ -361,6 +318,8 @@ export default function AdminPage() {
       </form>
 
       <form
+        key={statsKey}
+        ref={statsForm}
         onSubmit={saveStats}
         className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4"
       >
@@ -370,7 +329,7 @@ export default function AdminPage() {
 
         <select
           value={playerId}
-          onChange={(e) => setPlayerId(e.target.value)}
+          onChange={(e) => { setPlayerId(e.target.value); setMsg(""); }}
           className={box}
         >
           {groupNames.map((team) => (
@@ -384,8 +343,17 @@ export default function AdminPage() {
           ))}
         </select>
 
+        {!statsReady && !statsError && <p className="text-sm text-blue-300">Loading this player's stats…</p>}
+        {statsError && (
+          <p role="alert" className="text-sm text-yellow-300">
+            {statsError}{" "}
+            <button type="button" className="underline" onClick={() => setStatsRetry((n) => n + 1)}>Retry</button>
+          </p>
+        )}
+        <fieldset disabled={!statsReady} className="space-y-3">
         <input
           name="minutes"
+          defaultValue={0}
           type="number"
           inputMode="numeric"
           placeholder="Minutes"
@@ -394,6 +362,7 @@ export default function AdminPage() {
 
         <input
           name="goals"
+          defaultValue={0}
           type="number"
           inputMode="numeric"
           placeholder="Goals"
@@ -402,6 +371,7 @@ export default function AdminPage() {
 
         <input
           name="assists"
+          defaultValue={0}
           type="number"
           inputMode="numeric"
           placeholder="Assists"
@@ -410,6 +380,7 @@ export default function AdminPage() {
 
         <input
           name="yellowCards"
+          defaultValue={0}
           type="number"
           inputMode="numeric"
           placeholder="Yellow cards"
@@ -418,6 +389,7 @@ export default function AdminPage() {
 
         <input
           name="redCards"
+          defaultValue={0}
           type="number"
           inputMode="numeric"
           placeholder="Red cards"
@@ -428,6 +400,7 @@ export default function AdminPage() {
           <>
             <input
               name="saves"
+              defaultValue={0}
               type="number"
               inputMode="numeric"
               placeholder="Saves"
@@ -455,6 +428,7 @@ export default function AdminPage() {
         >
           {calculating ? "Calculating points…" : `Calculate points for ${selected?.firstName || ""} ${selected?.lastName || ""}`}
         </button>
+        </fieldset>
       </form>
 
       <section className="grid grid-cols-2 gap-3">
