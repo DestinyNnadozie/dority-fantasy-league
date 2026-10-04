@@ -45,6 +45,18 @@ export async function POST(req: Request) {
   if (!fixtureKey || (choice !== "HOME" && choice !== "DRAW" && choice !== "AWAY")) {
     return NextResponse.json({ error: "Bad vote" }, { status: 400 });
   }
+  const keyFor = (f: { homeTeam: string; awayTeam: string; kickoff: Date }) =>
+    `${f.homeTeam} vs ${f.awayTeam} ${f.kickoff.toISOString()}`;
+  // Older clients send the display key; validate it against real saved fixtures too.
+  const fixture = b.fixtureId
+    ? await prisma.fixture.findUnique({ where: { id: String(b.fixtureId) } })
+    : (await prisma.fixture.findMany()).find((f) => keyFor(f) === fixtureKey);
+  if (!fixture || keyFor(fixture) !== fixtureKey) {
+    return NextResponse.json({ error: "Fixture not found. Refresh the page." }, { status: 404 });
+  }
+  if (fixture.finished || (fixture.homeGoals !== null && fixture.awayGoals !== null) || fixture.kickoff.getTime() <= Date.now()) {
+    return NextResponse.json({ error: "Predictions are closed for this match." }, { status: 403 });
+  }
   const db = prisma as any;
   await db.prediction.upsert({
     where: { userId_fixtureKey: { userId: session.id, fixtureKey } },
