@@ -134,7 +134,7 @@ export default function AdminPage() {
       </section>
 
       <form onSubmit={saveDeadline} className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4">
-        <h2 className="text-lg font-semibold text-blue-300">Deadline</p>
+        <h2 className="text-lg font-semibold text-blue-300">Deadline</h2>
         <input
           type="date"
           value={date}
@@ -169,7 +169,7 @@ export default function AdminPage() {
         </select>
         <input name="minutes" type="number" inputMode="numeric" placeholder="Minutes" className={box} />
         <input name="goals" type="number" inputMode="numeric" placeholder="Goals" className={box} />
-        <input name="assists" type="number" inputMode="numeric" placeholder="Assists" className={box} />
+        <input name="assists" type="number" inputMode="numeric" placeholder="Assaints" className={box} />
         <input name="yellowCards" type="number" inputMode="numeric" placeholder="Yellow cards" className={box} />
         <input name="redCards" type="number" inputMode="numeric" placeholder="Red cards" className={box} />
         {isGK && (
