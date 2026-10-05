@@ -58,7 +58,7 @@ export async function PUT(req: Request) {
     });
     const byId = Object.fromEntries(players.map((p) => [p.id, p]));
     if (players.length !== unique.length) throw new Error("One or more players no longer exist");
-    const existing = await prisma.squadPick.findMany({ where: { teamId: team.id, gameweekId: gw.id }, select: { playerId: true } });
+    const existing = await prisma.squadPick.findMany({ where: { teamId: team.id, gameweekId: gw.id }, select: { playerId: true, player: { select: { teamName: true } } } });
     const existingIds = new Set(existing.map((p) => p.playerId));
     if (players.some((p) => p.status === "retired" && !existingIds.has(p.id))) {
       throw new Error("A removed player cannot be added to a squad");
@@ -66,13 +66,19 @@ export async function PUT(req: Request) {
     const spent = unique.reduce((s, p) => s + (byId[p.playerId]?.price ?? 9999), 0);
     if (spent > 3000) throw new Error("Over budget");
     const clubCount: Record<string, number> = {};
+    const existingClubCount: Record<string, number> = {};
+    for (const pick of existing) {
+      const club = pick.player.teamName || "Unknown";
+      existingClubCount[club] = (existingClubCount[club] || 0) + 1;
+    }
     for (const p of unique) {
       const club = byId[p.playerId]?.teamName || "Unknown";
       clubCount[club] = (clubCount[club] || 0) + 1;
-      if (clubCount[club] > 4) throw new Error("Max 4 players from " + club);
+      if (clubCount[club] > Math.max(4, existingClubCount[club] || 0)) throw new Error("Max 4 players from " + club + ". Existing excess cannot be increased.");
     }
-    await prisma.squadPick.deleteMany({ where: { teamId: team.id, gameweekId: gw.id } });
-    await prisma.squadPick.createMany({
+    await prisma.$transaction(async (tx) => {
+    await tx.squadPick.deleteMany({ where: { teamId: team.id, gameweekId: gw.id } });
+    await tx.squadPick.createMany({
       skipDuplicates: true,
       data: unique.map((p, i) => ({
         teamId: team.id,
@@ -85,7 +91,8 @@ export async function PUT(req: Request) {
         purchasePrice: byId[p.playerId].price
       }))
     });
-    await prisma.team.update({ where: { id: team.id }, data: { bank: 3000 - spent } });
+    await tx.team.update({ where: { id: team.id }, data: { bank: 3000 - spent } });
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 400 });

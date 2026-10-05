@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { RenameTeam } from "@/components/squad/RenameTeam";
 import { PointsBar } from "@/components/squad/PointsBar";
+import { restoreSavedSquad, pitchOrder } from "@/lib/squad/formation";
 
 type Pos = "GK"|"DEF"|"MID"|"FWD";
 type P = { id: string; firstName: string; lastName: string; position: Pos; price: number; teamName: string | null; gwPoints?: number };
@@ -32,7 +33,8 @@ function remapToFormation(prev: Pick[], formation: string): Pick[] {
   const used = new Set<string>();
   const next: Pick[] = [];
   for (const s of slots) {
-    const p = prev.find((x) => x.position === s.pos && !used.has(x.id));
+    const p = prev.find((x) => x.slot === "STARTING" && x.position === s.pos && !used.has(x.id))
+      || prev.find((x) => x.position === s.pos && !used.has(x.id));
     if (p) { used.add(p.id); next.push({ ...p, slot: "STARTING", pitchKey: s.key }); }
   }
   const benchPos: Record<string, number> = {};
@@ -77,7 +79,8 @@ export default function SquadPage() {
   const [msg, setMsg] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [dirty, setDirty] = useState(true);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => {
@@ -91,11 +94,12 @@ export default function SquadPage() {
 
   useEffect(() => {
     Promise.all([fetch("/api/players"), fetch("/api/team/picks")]).then(async ([pr, tr]) => {
+      if (!pr.ok || !tr.ok) throw new Error("Could not load squad. Please refresh.");
       const pd = await pr.json();
       const td = await tr.json();
       setMarket(pd.players || []);
       if (td.team?.name) setTeamName(td.team.name);
-      const saved = (td.team?.picks || []).map((x: any) => ({
+      const saved: Pick[] = (td.team?.picks || []).map((x: any) => ({
         id: x.player.id,
         firstName: x.player.firstName,
         lastName: x.player.lastName,
@@ -106,16 +110,20 @@ export default function SquadPage() {
         slot: x.slot,
         isCaptain: x.isCaptain
       }));
-      setPicks(remapToFormation(saved, "3-3-2"));
-      if (saved.length) setDirty(false);
+      const restored = restoreSavedSquad(saved);
+      setFormation(restored.formation);
+      setPicks(restored.picks);
+      setDirty(false);
       setLoaded(true);
-    });
+    }).catch((error) => setMsg(error.message));
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
-    setPicks((prev) => prev.length ? remapToFormation(prev, formation) : prev);
-  }, [formation, loaded]);
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const rows = FORMATIONS[formation];
   const spent = picks.reduce((s, p) => s + p.price, 0);
@@ -190,6 +198,7 @@ export default function SquadPage() {
   }
 
    async function save() {
+    if (!loaded || saving) return;
     if (!loggedIn) {
       window.location.href = "/login";
       return;
@@ -201,20 +210,25 @@ export default function SquadPage() {
       setMsg("Choose a captain");
       return;
     }
+    setSaving(true);
+    try {
+    const snapshot = picks;
     const res = await fetch("/api/team/picks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ picks: picks.map((p, i) => ({ playerId: p.id, slot: p.slot, squadOrder: i + 1, isCaptain: p.isCaptain, isViceCaptain: false })) })
+      body: JSON.stringify({ picks: [...snapshot].sort((a, b) => pitchOrder(a) - pitchOrder(b)).map((p, i) => ({ playerId: p.id, slot: p.slot, squadOrder: i + 1, isCaptain: p.isCaptain, isViceCaptain: false })) })
     });
     const data = await res.json();
     setMsg(res.ok ? "Squad saved" : data.error || "Could not save");
     if (res.ok) setDirty(false);
     if (!res.ok) alert(data.error || "Could not save");
+    } catch { setMsg("Could not save squad. Your changes are still unsaved—please retry."); }
+    finally { setSaving(false); }
   }
   const box = "flex h-28 flex-col justify-center rounded-2xl border border-blue-400/70 bg-blue-950 px-4";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+    <fieldset disabled={saving || !loaded} className="grid min-w-0 gap-6 lg:grid-cols-[1fr_300px]">
       <section>
         <h1 className="mb-3 text-3xl font-extrabold text-white">{teamName}</h1>
         <PointsBar />
@@ -230,12 +244,16 @@ export default function SquadPage() {
           </div>
           <div className={box}>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-300">Formation</p>
-            <select value={formation} onChange={(e) => { setFormation(e.target.value); setDirty(true); }} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
+            <select value={formation} onChange={(e) => { const next = e.target.value; setFormation(next); setPicks((prev) => remapToFormation(prev, next)); setSelectedSlot(null); setDirty(true); setMsg(""); }} className="mt-1 w-full rounded-lg bg-black px-2 py-2 text-sm text-white ring-1 ring-blue-500/40">
               {Object.keys(FORMATIONS).map((f) => <option key={f}>{f}</option>)}
             </select>
           </div>
         </div>
         {msg && <p className="mt-2 text-sm text-yellow-300">{msg}</p>}
+        {dirty && <div className="sticky top-0 z-20 mt-3 flex items-center justify-between gap-3 rounded-xl bg-yellow-300 p-3 text-black">
+          <span className="text-sm font-semibold">Unsaved squad changes</span>
+          <button type="button" onClick={save} className="min-h-12 rounded-lg bg-blue-950 px-4 font-semibold text-white">{saving ? "Saving…" : "Save squad"}</button>
+        </div>}
 
         {menuPlayer && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setMenuId(null)}>
@@ -319,6 +337,6 @@ export default function SquadPage() {
           ))}
         </ul>
       </aside>
-    </div>
+    </fieldset>
   );
 }
