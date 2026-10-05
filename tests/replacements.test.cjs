@@ -37,6 +37,26 @@ test('club cap excludes otherwise eligible players', () => {
   assert.equal(result.picks[0].playerId, 'new');
 });
 
+test('existing six-player club does not block replacing a departed player from another club', () => {
+  const retained = ['a','b','c','d','e','f'];
+  const result = planReplacements([pick('old'), ...retained.map(id => pick(id))], [
+    player('old', {status:'retired',teamName:'Lyon'}),
+    ...retained.map(id => player(id,{teamName:'Marseille'})),
+    player('blocked', {teamName:'Marseille'}), player('new', {teamName:'Lyon',price:110})
+  ]);
+  assert.ok(result);
+  assert.equal(result.picks[0].playerId, 'new');
+  assert.equal(result.replacements.length, 1);
+  assert.equal(result.picks.filter(p => retained.includes(p.playerId)).length, 6);
+});
+
+test('existing club excess cannot be increased, even by an Icon fallback', () => {
+  const retained = ['a','b','c','d','e'];
+  assert.equal(planReplacements([pick('old'),...retained.map(id=>pick(id))], [
+    player('old',{status:'retired'}),...retained.map(id=>player(id,{teamName:'Icons'})),player('extra',{teamName:'Icons'})
+  ]), null);
+});
+
 test('multiple replacements backtrack to respect budget without duplicates', () => {
   const result = planReplacements([pick('oldDef'), pick('oldMid'), pick('kept')], [
     player('oldDef', {status:'retired',price:200}), player('oldMid', {status:'retired',position:'MID',price:100}),
