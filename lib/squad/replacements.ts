@@ -19,28 +19,30 @@ export function planReplacements(picks: SquadPick[], players: SchoolPlayer[]) {
   const isIcon = (p: SchoolPlayer) => p.teamName?.toLowerCase() === "icons";
   const options = departing.map((pick) => {
     const old = byId.get(pick.playerId)!;
-    return players.filter((p) => p.status === "available" && p.position === old.position && isIcon(p) === isIcon(old))
-      .sort((a, b) => Math.abs(a.price - old.price) - Math.abs(b.price - old.price) || a.price - b.price || a.id.localeCompare(b.id));
+    return players.filter((p) => p.status === "available" && p.position === old.position && (!isIcon(old) || isIcon(p)))
+      .sort((a, b) => Number(isIcon(a)) - Number(isIcon(b)) || Math.abs(a.price - old.price) - Math.abs(b.price - old.price) || a.price - b.price || a.id.localeCompare(b.id));
   });
   // Backtrack so multiple departing players don't consume each other's only option.
-  function choose(index: number): boolean {
+  function choose(index: number, allowIconFallback: boolean): boolean {
     if (index === departing.length) return spent <= 3000 && [...clubs.values()].every((n) => n <= 4);
     const pick = departing[index];
     const oldId = pick.playerId;
     const oldPrice = pick.purchasePrice;
     for (const candidate of options[index]) {
+      if (!allowIconFallback && isIcon(candidate) && !isIcon(byId.get(oldId)!)) continue;
       const club = candidate.teamName || "Unknown";
       const count = clubs.get(club) || 0;
       if (used.has(candidate.id) || count >= 4 || spent + candidate.price > 3000) continue;
       used.add(candidate.id); clubs.set(club, count + 1); spent += candidate.price;
       pick.playerId = candidate.id; pick.purchasePrice = candidate.price;
-      if (choose(index + 1)) return true;
+      if (choose(index + 1, allowIconFallback)) return true;
       used.delete(candidate.id); clubs.set(club, count); spent -= candidate.price;
       pick.playerId = oldId; pick.purchasePrice = oldPrice;
     }
     return false;
   }
-  if (departing.length && !choose(0)) return null;
+  // Exhaust regular-player combinations first, then allow same-position Icons.
+  if (departing.length && !choose(0, false) && !choose(0, true)) return null;
   const replacements = next.flatMap((p, i) => p.playerId === picks[i].playerId ? [] : [{ playerOutId: picks[i].playerId, playerInId: p.playerId }]);
   return { picks: next, replacements, bank: 3000 - spent };
 }

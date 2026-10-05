@@ -52,6 +52,35 @@ test('no candidates returns no plan', () => {
   assert.equal(planReplacements([pick('old')], [player('old', {status:'retired'})]), null);
 });
 
+test('Icon fills the same position when all regular alternatives breach club limits', () => {
+  const retained = ['a', 'b', 'c', 'd'];
+  const result = planReplacements([pick('old'), ...retained.map(id => pick(id))], [
+    player('old', {status:'retired'}), ...retained.map(id => player(id)),
+    player('regular'), player('icon', {teamName:'Icons'})
+  ]);
+  assert.equal(result.picks[0].playerId, 'icon');
+  assert.equal(result.picks[0].isCaptain, true);
+});
+
+test('regular combinations are exhausted before an Icon fallback', () => {
+  const result = planReplacements([pick('oldDef'), pick('oldMid'), pick('kept')], [
+    player('oldDef', {status:'retired',price:200}), player('oldMid', {status:'retired',position:'MID'}),
+    player('kept', {price:2800,position:'GK'}), player('costly', {price:150}), player('cheap', {price:50}),
+    player('mid', {position:'MID',price:100}), player('iconMid', {teamName:'Icons',position:'MID',price:10})
+  ]);
+  assert.equal(result.picks[0].playerId, 'cheap');
+  assert.equal(result.picks[1].playerId, 'mid');
+});
+
+test('Icon fallback still obeys availability, position, budget, club cap and uniqueness', () => {
+  for (const change of [{status:'retired'}, {status:'injured'}, {position:'GK'}, {price:3001}]) {
+    assert.equal(planReplacements([pick('old')], [player('old',{status:'retired'}),player('icon',{teamName:'Icons',...change})]), null);
+  }
+  assert.equal(planReplacements([pick('old'),pick('icon')], [player('old',{status:'retired'}),player('icon',{teamName:'Icons'})]), null);
+  const retained = ['a','b','c','d'];
+  assert.equal(planReplacements([pick('old'),...retained.map(id=>pick(id))], [player('old',{status:'retired'}),...retained.map(id=>player(id,{teamName:'Icons'})),player('extra',{teamName:'Icons'})]), null);
+});
+
 test('delete archives only the player; denies non-admin and missing player', async () => {
   let role = 'STUDENT';
   let found = true;
