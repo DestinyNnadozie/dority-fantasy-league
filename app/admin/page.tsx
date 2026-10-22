@@ -124,10 +124,11 @@ export default function AdminPage() {
     ),
   ];
 
-  // The keyed form clears immediately; only this player's response may fill it.
+  // Fresh form when player changes
   useEffect(() => {
     if (!playerId || !gwId) return;
     let cancelled = false;
+
     setLoadedStatsKey("");
     setStatsError("");
 
@@ -137,13 +138,13 @@ export default function AdminPage() {
       );
       if (!res.ok) throw new Error("Could not load saved stats");
       const data = await res.json();
-      if (cancelled || !statsForm.current) return;
+      if (cancelled) return;
       const stats = data.stats || {};
       for (const name of ["minutes", "goals", "assists", "yellowCards", "redCards", "saves"]) {
-        const input = statsForm.current.elements.namedItem(name) as HTMLInputElement | null;
+        const input = statsForm.current?.elements.namedItem(name) as HTMLInputElement | null;
         if (input) input.value = String(stats[name] ?? 0);
       }
-      const checkbox = statsForm.current.elements.namedItem("cs") as HTMLInputElement | null;
+      const checkbox = statsForm.current?.elements.namedItem("cs") as HTMLInputElement | null;
       if (checkbox) checkbox.checked = Boolean(stats.cleanSheet);
       setLoadedStatsKey(statsKey);
     };
@@ -174,7 +175,7 @@ export default function AdminPage() {
 
     setMsg(res.ok ? "Deadline saved" : "Save failed");
 
-    load();
+    load(); // FIXED — forces club table to refresh
   }
 
   async function createNext() {
@@ -329,7 +330,11 @@ export default function AdminPage() {
 
         <select
           value={playerId}
-          onChange={(e) => { setPlayerId(e.target.value); setMsg(""); }}
+          onChange={(e) => { 
+            setPlayerId(e.target.value); 
+            setMsg(""); 
+            setStatsRetry((r) => r + 1); // force fresh load
+          }}
           className={box}
         >
           {groupNames.map((team) => (
