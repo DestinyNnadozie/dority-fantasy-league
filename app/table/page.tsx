@@ -27,8 +27,10 @@ export default function TablePage() {
       body: JSON.stringify({ table: rows })
     });
     setMsg(res.ok ? "Table saved" : "Only coordinator can edit");
-   if (res.ok) load();
-window.location.reload(); // force full refresh so club table updates live
+    if (res.ok) {
+      load();
+      window.location.reload(); // force full refresh so club table updates live
+    }
   }
 
   return (
