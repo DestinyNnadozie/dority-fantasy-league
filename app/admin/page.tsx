@@ -40,52 +40,36 @@ export default function AdminPage() {
 
   async function load() {
     const me = await (await fetch("/api/auth/me")).json();
-
     const ok =
       me.user?.role === "ADMIN" || me.user?.role === "TEACHER";
-
     setAllowed(ok);
-
     if (!ok) return;
-
     const [p, g] = await Promise.all([
       fetch("/api/players"),
       fetch("/api/admin/gameweeks"),
     ]);
-
     const pd = await p.json();
     const gd = await g.json();
-
     setPlayers(pd.players || []);
-
     if (!playerId && pd.players?.length) {
       setPlayerId(pd.players[0].id);
     }
-
     const list: GW[] = gd.gameweeks || [];
-
     setGameweeks(list);
-
     const open =
       list.find((x) => x.status === "OPEN") ||
       list[list.length - 1] ||
       null;
-
     setOpenGw(open);
-
     if (open) {
       setStatus(open.status === "LOCKED" ? "LOCKED" : "OPEN");
-
       const dt = new Date(open.deadline);
-
       setDate(dt.toISOString().slice(0, 10));
-
       setTime(
         String(dt.getHours()).padStart(2, "0") +
           ":" +
           String(dt.getMinutes()).padStart(2, "0")
       );
-
       setGwId(open.id);
     } else {
       setGwId(1);
@@ -98,25 +82,18 @@ export default function AdminPage() {
 
   const selected = players.find((p) => p.id === playerId);
   const isGK = selected?.position === "GK";
-
   const box =
     "min-h-12 w-full rounded-xl bg-white p-3 text-base text-black";
-
   const btn =
     "min-h-12 w-full rounded-xl bg-blue-600 px-4 text-base font-medium text-black";
-
   const groups: Record<string, Player[]> = {};
-
   for (const p of players) {
     const g = p.teamName || "Other";
-
     if (!groups[g]) {
       groups[g] = [];
     }
-
     groups[g].push(p);
   }
-
   const groupNames = [
     ...TEAM_ORDER.filter((t) => groups[t]?.length),
     ...Object.keys(groups).filter(
@@ -128,10 +105,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (!playerId || !gwId) return;
     let cancelled = false;
-
     setLoadedStatsKey("");
     setStatsError("");
-
     const fetchPlayerStats = async () => {
       const res = await fetch(
         `/api/admin/stats?playerId=${encodeURIComponent(playerId)}&gameweekId=${gwId}`
@@ -148,7 +123,6 @@ export default function AdminPage() {
       if (checkbox) checkbox.checked = Boolean(stats.cleanSheet);
       setLoadedStatsKey(statsKey);
     };
-
     fetchPlayerStats().catch(() => {
       if (!cancelled) setStatsError("Could not load this player's saved stats. Please retry.");
     });
@@ -157,9 +131,7 @@ export default function AdminPage() {
 
   async function saveDeadline(e: React.FormEvent) {
     e.preventDefault();
-
     if (!openGw) return;
-
     const res = await fetch("/api/admin/gameweeks", {
       method: "PUT",
       headers: {
@@ -172,34 +144,27 @@ export default function AdminPage() {
         status,
       }),
     });
-
     setMsg(res.ok ? "Deadline saved" : "Save failed");
-
-    load(); // FIXED — forces club table to refresh
+    load(); // force full refresh so club table updates live
   }
 
   async function createNext() {
     const res = await fetch("/api/admin/gameweeks/next", {
       method: "POST",
     });
-
     const data = await res.json();
-
     setMsg(
       res.ok
         ? "Created " + data.gameweek.name
         : data.error || "Failed"
     );
-
     load();
   }
 
   async function saveStats(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!statsReady) return;
-
     const f = new FormData(e.currentTarget);
-
     const res = await fetch("/api/admin/stats", {
       method: "PUT",
       headers: {
@@ -217,7 +182,6 @@ export default function AdminPage() {
         saves: Number(f.get("saves") || 0),
       }),
     });
-
     setMsg(
       res.ok ? "Stats saved" : "Failed to save stats"
     );
@@ -259,14 +223,11 @@ export default function AdminPage() {
           {msg}
         </p>
       )}
-
       <section className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4">
         <p className="text-sm text-blue-300">Open gameweek</p>
-
         <p className="text-2xl font-bold text-white">
           {openGw?.name || "None"}
         </p>
-
         <button
           type="button"
           onClick={createNext}
@@ -274,14 +235,12 @@ export default function AdminPage() {
         >
           Create next GW (after fixture scores)
         </button>
-
         <p className="text-xs text-blue-400">
           {gameweeks
             .map((g) => g.name + " " + g.status)
             .join(" · ")}
         </p>
       </section>
-
       <form
         onSubmit={saveDeadline}
         className="space-y-3 rounded-2xl border border-blue-500/20 bg-black p-4"
@@ -289,21 +248,18 @@ export default function AdminPage() {
         <h2 className="text-lg font-semibold text-blue-300">
           Deadline
         </h2>
-
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           className={box}
         />
-
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
           className={box}
         />
-
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -314,10 +270,8 @@ export default function AdminPage() {
             LOCKED — transfers off
           </option>
         </select>
-
         <button className={btn}>Save deadline</button>
       </form>
-
       <form
         key={statsKey}
         ref={statsForm}
@@ -327,7 +281,6 @@ export default function AdminPage() {
         <h2 className="text-lg font-semibold text-blue-300">
           Match stats
         </h2>
-
         <select
           value={playerId}
           onChange={(e) => { 
@@ -347,7 +300,6 @@ export default function AdminPage() {
             </optgroup>
           ))}
         </select>
-
         {!statsReady && !statsError && <p className="text-sm text-blue-300">Loading this player's stats…</p>}
         {statsError && (
           <p role="alert" className="text-sm text-yellow-300">
@@ -364,7 +316,6 @@ export default function AdminPage() {
           placeholder="Minutes"
           className={box}
         />
-
         <input
           name="goals"
           defaultValue={0}
@@ -373,7 +324,6 @@ export default function AdminPage() {
           placeholder="Goals"
           className={box}
         />
-
         <input
           name="assists"
           defaultValue={0}
@@ -382,7 +332,6 @@ export default function AdminPage() {
           placeholder="Assists"
           className={box}
         />
-
         <input
           name="yellowCards"
           defaultValue={0}
@@ -391,7 +340,6 @@ export default function AdminPage() {
           placeholder="Yellow cards"
           className={box}
         />
-
         <input
           name="redCards"
           defaultValue={0}
@@ -400,7 +348,6 @@ export default function AdminPage() {
           placeholder="Red cards"
           className={box}
         />
-
         {isGK && (
           <>
             <input
@@ -411,7 +358,6 @@ export default function AdminPage() {
               placeholder="Saves"
               className={box}
             />
-
             <label className="flex min-h-12 items-center gap-3 text-white">
               <input
                 name="cs"
@@ -422,9 +368,7 @@ export default function AdminPage() {
             </label>
           </>
         )}
-
         <button className={btn}>Save stats</button>
-
         <button
           type="button"
           onClick={calculatePlayer}
@@ -435,7 +379,6 @@ export default function AdminPage() {
         </button>
         </fieldset>
       </form>
-
       <section className="grid grid-cols-2 gap-3">
         <a
           href="/fixtures"
@@ -443,21 +386,18 @@ export default function AdminPage() {
         >
           Fixtures
         </a>
-
         <a
           href="/table"
           className="rounded-xl bg-blue-950 p-4 text-center text-sm"
         >
           Club table
         </a>
-
         <a
           href="/news"
           className="rounded-xl bg-blue-950 p-4 text-center text-sm"
         >
           News
         </a>
-
         <a
           href="/awards"
           className="rounded-xl bg-blue-950 p-4 text-center text-sm"
