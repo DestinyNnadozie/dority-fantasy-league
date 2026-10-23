@@ -8,6 +8,7 @@
     "start": "next start",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:club-table": "prisma db execute --file prisma/club-standing.sql --schema prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },

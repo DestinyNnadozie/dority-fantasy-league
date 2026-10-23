@@ -239,3 +239,14 @@ model News {
   createdAt DateTime @default(now())
 }
 
+model ClubStanding {
+  team   String @id
+  played Int    @default(0)
+  won    Int    @default(0)
+  drawn  Int    @default(0)
+  lost   Int    @default(0)
+  gf     Int    @default(0)
+  ga     Int    @default(0)
+  pts    Int    @default(0)
+}
+

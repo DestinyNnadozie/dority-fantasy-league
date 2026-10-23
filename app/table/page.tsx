@@ -7,40 +7,51 @@ export default function TablePage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const [t, me] = await Promise.all([fetch("/api/table"), fetch("/api/auth/me")]);
-    setRows((await t.json()).table || []);
+    const data = await t.json();
+    if (!t.ok) throw new Error(data.error || "Could not load club table");
+    setRows(data.table || []);
     const user = (await me.json()).user;
     setIsAdmin(user?.role === "ADMIN" || user?.role === "TEACHER");
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load().catch((error) => setMsg(error.message)); }, []);
 
   function update(i: number, key: keyof Row, value: string) {
     setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [key]: Number(value) } : r));
   }
 
   async function save() {
+    if (saving) return;
+    setSaving(true);
+    setMsg("");
+    try {
     const res = await fetch("/api/table", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ table: rows })
     });
-    setMsg(res.ok ? "Table saved" : "Only coordinator can edit");
-    if (res.ok) {
-      load();
-      window.location.reload(); // force full refresh so club table updates live
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMsg(res.status === 401 || res.status === 403 ? "Your coordinator session may have expired. Log in again to save." : data.error || "Could not save the table. Please try again.");
+      return;
     }
+    setRows(data.table || rows);
+    setMsg("Table saved");
+    } catch { setMsg("Could not connect to save. Your edits are still here—please retry."); }
+    finally { setSaving(false); }
   }
 
   return (
     <section className="rounded-2xl border border-blue-500/20 bg-black p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-blue-300">Club table</h1>
-        {isAdmin && <button onClick={save} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-black">Save table</button>}
+        {isAdmin && <button disabled={saving} onClick={save} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-black disabled:opacity-50">{saving ? "Saving…" : "Save table"}</button>}
       </div>
       {msg && <p className="mb-3 text-sm text-blue-200">{msg}</p>}
-      <div className="overflow-x-auto">
+      <fieldset disabled={saving} className="min-w-0 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="text-blue-400">
@@ -88,7 +99,7 @@ export default function TablePage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </fieldset>
     </section>
   );
 }
